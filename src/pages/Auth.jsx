@@ -1,0 +1,129 @@
+import { useState } from 'react'
+import { useAuth } from '../context/AuthContext'
+import { Container, Card, Button, Input } from '../components/BaseComponents'
+import { theme } from '../styles/theme'
+
+export function Auth() {
+  const [mode, setMode] = useState('login') // login ou register
+  const [formData, setFormData] = useState({
+    email: '',
+    password: '',
+    name: '',
+    username: '',
+  })
+  const { login, register } = useAuth()
+
+  const handleChange = (e) => {
+    const { name, value } = e.target
+    setFormData(prev => ({ ...prev, [name]: value }))
+  }
+
+  const handleSubmit = (e) => {
+    e.preventDefault()
+    if (mode === 'login') {
+      login(formData.email, formData.password)
+    } else {
+      register({
+        name: formData.name,
+        username: formData.username,
+        email: formData.email,
+        password: formData.password,
+      })
+    }
+  }
+
+  return (
+    <div
+      style={{
+        minHeight: '100vh',
+        background: `linear-gradient(135deg, ${theme.colors.background} 0%, ${theme.colors.surface} 100%)`,
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+      }}
+    >
+      <Container style={{ maxWidth: '400px', width: '100%' }}>
+        <Card>
+          <div style={{ textAlign: 'center', marginBottom: theme.spacing.xl }}>
+            <h1 style={{ fontSize: theme.fonts.sizes.xxl, marginBottom: theme.spacing.md }}>
+              🌊 Oceanos
+            </h1>
+            <p style={{ color: theme.colors.textSecondary }}>
+              {mode === 'login' ? 'Bem-vindo de volta!' : 'Junte-se à nossa comunidade'}
+            </p>
+          </div>
+
+          <form onSubmit={handleSubmit}>
+            {mode === 'register' && (
+              <>
+                <Input
+                  label="Nome"
+                  name="name"
+                  value={formData.name}
+                  onChange={handleChange}
+                  placeholder="Seu nome"
+                  required
+                />
+                <Input
+                  label="Nome de Usuário"
+                  name="username"
+                  value={formData.username}
+                  onChange={handleChange}
+                  placeholder="seu_usuario"
+                  required
+                />
+              </>
+            )}
+
+            <Input
+              label="Email"
+              name="email"
+              type="email"
+              value={formData.email}
+              onChange={handleChange}
+              placeholder="seu@email.com"
+              required
+            />
+
+            <Input
+              label="Senha"
+              name="password"
+              type="password"
+              value={formData.password}
+              onChange={handleChange}
+              placeholder="••••••••"
+              required
+            />
+
+            <Button
+              type="submit"
+              variant="primary"
+              style={{ width: '100%', marginBottom: theme.spacing.md }}
+            >
+              {mode === 'login' ? 'Entrar' : 'Criar Conta'}
+            </Button>
+          </form>
+
+          <div style={{ textAlign: 'center', marginTop: theme.spacing.lg }}>
+            <p style={{ color: theme.colors.textSecondary, marginBottom: theme.spacing.sm }}>
+              {mode === 'login' ? 'Não tem conta?' : 'Já tem conta?'}
+            </p>
+            <button
+              onClick={() => setMode(mode === 'login' ? 'register' : 'login')}
+              style={{
+                background: 'none',
+                border: 'none',
+                color: theme.colors.secondary,
+                cursor: 'pointer',
+                textDecoration: 'underline',
+                fontSize: theme.fonts.sizes.md,
+              }}
+            >
+              {mode === 'login' ? 'Cadastre-se' : 'Faça Login'}
+            </button>
+          </div>
+        </Card>
+      </Container>
+    </div>
+  )
+}
