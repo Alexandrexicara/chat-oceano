@@ -1,8 +1,7 @@
-// Criar sons oceânicos em base64
-// Sons gerados com Web Audio API
+// Sons oceânicos com Web Audio API
 
 export const createOceanSounds = () => {
-  // Som de água/splash
+  // Som de splash (água)
   const createWaterSound = () => {
     const audioContext = new (window.AudioContext || window.webkitAudioContext)()
     const oscillator = audioContext.createOscillator()
@@ -22,43 +21,117 @@ export const createOceanSounds = () => {
     oscillator.stop(audioContext.currentTime + 0.3)
   }
 
-  // Som de ondas
+  // Som de ondas (mais suave e longo)
   const createWaveSound = () => {
     const audioContext = new (window.AudioContext || window.webkitAudioContext)()
-    const oscillator = audioContext.createOscillator()
-    const gain = audioContext.createGain()
     
-    oscillator.connect(gain)
+    // Criar ruído branco para som de ondas
+    const bufferSize = audioContext.sampleRate * 1.5 // 1.5 segundos
+    const buffer = audioContext.createBuffer(1, bufferSize, audioContext.sampleRate)
+    const data = buffer.getChannelData(0)
+    
+    for (let i = 0; i < bufferSize; i++) {
+      data[i] = Math.random() * 2 - 1
+    }
+    
+    const noise = audioContext.createBufferSource()
+    noise.buffer = buffer
+    
+    // Filtro para suavizar o ruído (som de ondas)
+    const filter = audioContext.createBiquadFilter()
+    filter.type = 'lowpass'
+    filter.frequency.setValueAtTime(400, audioContext.currentTime)
+    filter.frequency.exponentialRampToValueAtTime(200, audioContext.currentTime + 1)
+    
+    // Volume envelope (onda que vem e vai)
+    const gain = audioContext.createGain()
+    gain.gain.setValueAtTime(0, audioContext.currentTime)
+    gain.gain.linearRampToValueAtTime(0.15, audioContext.currentTime + 0.3)
+    gain.gain.linearRampToValueAtTime(0.1, audioContext.currentTime + 0.8)
+    gain.gain.linearRampToValueAtTime(0, audioContext.currentTime + 1.5)
+    
+    noise.connect(filter)
+    filter.connect(gain)
     gain.connect(audioContext.destination)
     
-    // Som tipo "onda"
-    oscillator.frequency.setValueAtTime(200, audioContext.currentTime)
-    oscillator.frequency.exponentialRampToValueAtTime(80, audioContext.currentTime + 0.5)
+    noise.start(audioContext.currentTime)
+    noise.stop(audioContext.currentTime + 1.5)
+  }
+
+  // Som de garrafa chegando (splash + onda)
+  const createBottleSound = () => {
+    const audioContext = new (window.AudioContext || window.webkitAudioContext)()
     
-    gain.gain.setValueAtTime(0.2, audioContext.currentTime)
-    gain.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.5)
+    // Splash inicial
+    const oscillator = audioContext.createOscillator()
+    const gain1 = audioContext.createGain()
+    
+    oscillator.connect(gain1)
+    gain1.connect(audioContext.destination)
+    
+    oscillator.frequency.setValueAtTime(1200, audioContext.currentTime)
+    oscillator.frequency.exponentialRampToValueAtTime(200, audioContext.currentTime + 0.2)
+    
+    gain1.gain.setValueAtTime(0.2, audioContext.currentTime)
+    gain1.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.2)
     
     oscillator.start(audioContext.currentTime)
-    oscillator.stop(audioContext.currentTime + 0.5)
+    oscillator.stop(audioContext.currentTime + 0.2)
+    
+    // Onda após o splash
+    setTimeout(() => {
+      const bufferSize = audioContext.sampleRate * 1.2
+      const buffer = audioContext.createBuffer(1, bufferSize, audioContext.sampleRate)
+      const data = buffer.getChannelData(0)
+      
+      for (let i = 0; i < bufferSize; i++) {
+        data[i] = Math.random() * 2 - 1
+      }
+      
+      const noise = audioContext.createBufferSource()
+      noise.buffer = buffer
+      
+      const filter = audioContext.createBiquadFilter()
+      filter.type = 'lowpass'
+      filter.frequency.setValueAtTime(500, audioContext.currentTime)
+      filter.frequency.exponentialRampToValueAtTime(250, audioContext.currentTime + 0.8)
+      
+      const gain2 = audioContext.createGain()
+      gain2.gain.setValueAtTime(0, audioContext.currentTime)
+      gain2.gain.linearRampToValueAtTime(0.12, audioContext.currentTime + 0.2)
+      gain2.gain.linearRampToValueAtTime(0, audioContext.currentTime + 1.2)
+      
+      noise.connect(filter)
+      filter.connect(gain2)
+      gain2.connect(audioContext.destination)
+      
+      noise.start(audioContext.currentTime)
+      noise.stop(audioContext.currentTime + 1.2)
+    }, 200)
   }
 
   return {
     playWater: createWaterSound,
     playWave: createWaveSound,
+    playBottle: createBottleSound,
   }
 }
 
-// Simular reprodução de som (sem erro se Web Audio não estiver disponível)
+// Som de mensagem normal (onda)
 export const playMessageSound = () => {
   try {
     const sounds = createOceanSounds()
-    // Toca som de onda quando chega mensagem
     sounds.playWave()
-    
-    // Toca som de water após 200ms
-    setTimeout(() => {
-      sounds.playWater()
-    }, 200)
+  } catch (e) {
+    console.log('Web Audio API não disponível')
+  }
+}
+
+// Som de garrafa/barril chegando (splash + ondas)
+export const playBottleSound = () => {
+  try {
+    const sounds = createOceanSounds()
+    sounds.playBottle()
   } catch (e) {
     console.log('Web Audio API não disponível')
   }

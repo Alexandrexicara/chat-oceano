@@ -23,6 +23,7 @@ function AppContent() {
   // Navegação
   const navItems = [
     { id: 'chat', label: '💬 Chat', icon: '💬' },
+    { id: 'oceano', label: '🌊 Oceano', icon: '🌊' },
     { id: 'status', label: '🍾 Status', icon: '🍾' },
     { id: 'profile', label: '👤 Perfil', icon: '👤' },
   ]
@@ -75,6 +76,7 @@ function AppContent() {
       {/* Conteúdo Principal */}
       <div style={{ flex: 1, overflow: 'hidden', paddingBottom: '60px' }}>
         {currentPage === 'chat' && <Chat />}
+        {currentPage === 'oceano' && <Chat oceanoMode />}
         {currentPage === 'status' && <Status />}
         {currentPage === 'profile' && <Profile />}
       </div>
