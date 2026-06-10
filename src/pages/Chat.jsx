@@ -389,8 +389,8 @@ function Barrel({ message, onClick, index }) {
       {/* Barril deitado (horizontal) */}
       <div
         style={{
-          width: '120px',
-          height: '60px',
+          width: '180px',
+          height: '90px',
           position: 'relative',
           display: 'flex',
           alignItems: 'center',
@@ -416,11 +416,12 @@ function Barrel({ message, onClick, index }) {
                 : 'drop-shadow(0 0 12px rgba(139,105,20,0.5))',
             }}
             onError={(e) => {
-              console.log('Erro ao carregar barril.png')
+              console.error('ERRO ao carregar barril.png no Chat!', e)
+              console.log('Tentando carregar de:', e.target.src)
               e.target.style.display = 'none'
               e.target.nextSibling.style.display = 'flex'
             }}
-            onLoad={() => console.log('Barril carregado com sucesso!')}
+            onLoad={() => console.log('✅ Barril.png carregado com sucesso no Chat!')}
           />
           
           {/* Barril CSS (fallback se imagem não carregar) */}
@@ -456,26 +457,6 @@ function Barrel({ message, onClick, index }) {
               borderRadius: '3px',
             }} />
           </div>
-        </div>
-        
-        {/* Ícone de vídeo sobreposto */}
-        <div style={{
-          position: 'absolute',
-          top: '50%',
-          left: '50%',
-          transform: 'translate(-50%, -50%)',
-          width: '45px',
-          height: '45px',
-          background: 'rgba(0,0,0,0.75)',
-          borderRadius: '50%',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          border: '2px solid rgba(255,255,255,0.4)',
-          boxShadow: '0 4px 12px rgba(0,0,0,0.6)',
-          zIndex: 10,
-        }}>
-          <span style={{ fontSize: '24px', filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.8))' }}>🎬</span>
         </div>
       </div>
 
@@ -624,6 +605,17 @@ const mockMessages = {
     { id: 1, sender: 'them', senderName: 'João Silva', text: 'Olá, tudo bem?', time: '10:30' },
     { id: 2, sender: 'me', senderName: 'Você', text: 'Oi João! Tudo ótimo e você?', time: '10:31' },
     { id: 3, sender: 'them', senderName: 'João Silva', text: 'Também estou bem! Vamos combinar algo?', time: '10:32' },
+    // Mensagem de teste com vídeo (barril)
+    { 
+      id: 999, 
+      sender: 'them', 
+      senderName: 'João Silva', 
+      text: '🎥 Olha esse vídeo!', 
+      time: '10:33',
+      mediaType: 'video',
+      mediaUrl: '',
+      fileName: 'video_teste.webm',
+    },
   ],
   2: [
     { id: 1, sender: 'them', senderName: 'Maria Santos', text: 'E aí! Vamos marcar algo!', time: '09:10' },
@@ -661,7 +653,27 @@ export function Chat({ oceanoMode }) {
   const [oceanoText, setOceanoText] = useState('')
   const [showContactsOnMobile, setShowContactsOnMobile] = useState(true)
   const [contacts, setContacts] = useState(mockContacts)
-  const [oceanoBottles, setOceanoBottles] = useState([])
+  const [oceanoBottles, setOceanoBottles] = useState([
+    // Garrafa de texto
+    {
+      id: 1000,
+      sender: 'them',
+      senderName: 'Maria Santos',
+      text: 'Olá oceano! 🌊',
+      time: '10:00',
+    },
+    // Barril de vídeo (teste)
+    {
+      id: 1001,
+      sender: 'them',
+      senderName: 'João Silva',
+      text: '🎥 Vídeo para todos!',
+      time: '10:05',
+      mediaType: 'video',
+      mediaUrl: '',
+      fileName: 'video_oceano.webm',
+    },
+  ])
   const [loading, setLoading] = useState(true)
   const messagesEndRef = useRef(null)
   const fileInputRef = useRef(null)

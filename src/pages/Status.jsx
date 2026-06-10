@@ -139,17 +139,19 @@ export function Status() {
         src="/img/barril.png" 
         alt="Barril de vídeo"
         style={{
-          width: '80px',
-          height: '80px',
+          width: '150px',
+          height: '150px',
           objectFit: 'contain',
           filter: isOwn 
             ? 'drop-shadow(0 0 12px rgba(74,222,128,0.5)) brightness(1.1)'
             : 'drop-shadow(0 0 12px rgba(139,105,20,0.5))',
         }}
         onError={(e) => {
+          console.log('Erro ao carregar barril.png no Status')
           e.target.style.display = 'none'
           e.target.nextSibling.style.display = 'flex'
         }}
+        onLoad={() => console.log('Barril carregado no Status!')}
       />
       <div style={{
         display: 'none',
