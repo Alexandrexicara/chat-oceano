@@ -1,12 +1,14 @@
-import { useState } from 'react'
+import { useState, useRef } from 'react'
 import { useAuth } from '../context/AuthContext'
 import { Header, Container, Card, Button, Input, Badge } from '../components/BaseComponents'
 import { theme } from '../styles/theme'
+import { AudioRecorder, VideoRecorder } from '../components/AudioVideoRecorder'
+import { playBottleSound } from '../utils/sounds'
 
 export function Status() {
   const { user, logout } = useAuth()
   const [mode, setMode] = useState('view') // view ou create
-  const [statusForm, setStatusForm] = useState({ text: '', image: '' })
+  const [statusForm, setStatusForm] = useState({ text: '', mediaUrl: '', mediaType: '' })
   const [statuses, setStatuses] = useState([
     {
       id: 1,
@@ -16,6 +18,8 @@ export function Status() {
       type: 'text',
       timestamp: '2 minutos atrás',
       views: 15,
+      likes: 3,
+      liked: false,
     },
     {
       id: 2,
@@ -25,27 +29,156 @@ export function Status() {
       type: 'text',
       timestamp: '1 hora atrás',
       views: 32,
+      likes: 8,
+      liked: false,
     },
   ])
 
   const handleCreateStatus = (e) => {
     e.preventDefault()
-    if (!statusForm.text.trim()) return
+    if (!statusForm.text.trim() && !statusForm.mediaUrl) return
+
+    // Determinar tipo: video = barril, texto/audio = garrafa
+    const statusType = statusForm.mediaType === 'video' ? 'video' : 'text'
 
     const newStatus = {
       id: Date.now(),
-      author: user.name,
+      author: user?.name || 'Você',
       avatar: '👤',
       content: statusForm.text,
-      type: 'text',
+      type: statusType,
+      mediaUrl: statusForm.mediaUrl,
+      mediaType: statusForm.mediaType,
       timestamp: 'agora',
       views: 0,
+      likes: 0,
+      liked: false,
     }
 
     setStatuses([newStatus, ...statuses])
-    setStatusForm({ text: '', image: '' })
+    setStatusForm({ text: '', mediaUrl: '', mediaType: '' })
     setMode('view')
+    playBottleSound()
   }
+
+  const handleLike = (statusId) => {
+    setStatuses(statuses.map(status => {
+      if (status.id === statusId) {
+        return {
+          ...status,
+          liked: !status.liked,
+          likes: status.liked ? status.likes - 1 : status.likes + 1
+        }
+      }
+      return status
+    }))
+  }
+
+  const handleAudioRecording = (audioUrl) => {
+    setStatusForm({
+      ...statusForm,
+      mediaUrl: audioUrl,
+      mediaType: 'audio'
+    })
+  }
+
+  const handleVideoRecording = (videoUrl) => {
+    setStatusForm({
+      ...statusForm,
+      mediaUrl: videoUrl,
+      mediaType: 'video'
+    })
+  }
+
+  const formatTime = (seconds) => {
+    const mins = Math.floor(seconds / 60)
+    const secs = Math.floor(seconds % 60)
+    return `${mins}:${secs.toString().padStart(2, '0')}`
+  }
+
+  // Componente Garrafa
+  const BottleIcon = ({ isOwn }) => (
+    <div style={{
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      padding: '20px',
+    }}>
+      <div style={{ position: 'relative' }}>
+        {/* Corpo da garrafa */}
+        <div style={{
+          width: '50px',
+          height: '80px',
+          background: isOwn ? '#4ade80' : '#1a4d6d',
+          border: `2px solid ${theme.colors.secondary}`,
+          borderRadius: '8px 8px 20px 20px',
+          position: 'relative',
+        }} />
+        {/* Gargalo */}
+        <div style={{
+          width: '20px',
+          height: '30px',
+          background: isOwn ? '#4ade80' : '#1a4d6d',
+          border: `2px solid ${theme.colors.secondary}`,
+          borderRadius: '4px 4px 0 0',
+          margin: '0 auto',
+        }} />
+      </div>
+    </div>
+  )
+
+  // Componente Barril
+  const BarrelIcon = ({ isOwn }) => (
+    <div style={{
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      padding: '20px',
+    }}>
+      <img 
+        src="/img/barril.png" 
+        alt="Barril de vídeo"
+        style={{
+          width: '80px',
+          height: '80px',
+          objectFit: 'contain',
+          filter: isOwn 
+            ? 'drop-shadow(0 0 12px rgba(74,222,128,0.5)) brightness(1.1)'
+            : 'drop-shadow(0 0 12px rgba(139,105,20,0.5))',
+        }}
+        onError={(e) => {
+          e.target.style.display = 'none'
+          e.target.nextSibling.style.display = 'flex'
+        }}
+      />
+      <div style={{
+        display: 'none',
+        width: '80px',
+        height: '50px',
+        background: 'linear-gradient(90deg, #8B6914, #A0782C, #8B6914)',
+        borderRadius: '10px',
+        position: 'relative',
+        border: '2px solid #654321',
+      }}>
+        <div style={{
+          position: 'absolute',
+          top: '5px',
+          left: '10px',
+          right: '10px',
+          height: '3px',
+          background: '#654321',
+        }} />
+        <div style={{
+          position: 'absolute',
+          bottom: '5px',
+          left: '10px',
+          right: '10px',
+          height: '3px',
+          background: '#654321',
+        }} />
+      </div>
+    </div>
+  )
 
   return (
     <div style={{ minHeight: '100vh', background: theme.colors.background }}>
@@ -72,7 +205,7 @@ export function Status() {
             <div
               style={{
                 display: 'grid',
-                gridTemplateColumns: 'repeat(auto-fill, minmax(250px, 1fr))',
+                gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))',
                 gap: theme.spacing.lg,
               }}
             >
@@ -120,30 +253,57 @@ export function Status() {
                       </div>
                     </div>
 
+                    {/* Conteúdo - Garrafa ou Barril */}
                     <div
                       style={{
                         background: theme.colors.background,
-                        padding: theme.spacing.lg,
+                        padding: theme.spacing.md,
                         borderRadius: theme.borderRadius.md,
                         marginBottom: theme.spacing.md,
-                        minHeight: '120px',
+                        minHeight: '140px',
                         display: 'flex',
+                        flexDirection: 'column',
                         alignItems: 'center',
                         justifyContent: 'center',
                       }}
                     >
-                      <p style={{ fontSize: theme.fonts.sizes.lg, textAlign: 'center' }}>
-                        🍾 {status.content}
-                      </p>
+                      {status.type === 'video' ? (
+                        <>
+                          <BarrelIcon isOwn={status.author === user?.name} />
+                          <p style={{ fontSize: theme.fonts.sizes.sm, textAlign: 'center', marginTop: '8px' }}>
+                            🛢️ {status.content || 'Vídeo no barril'}
+                          </p>
+                        </>
+                      ) : status.mediaType === 'audio' ? (
+                        <>
+                          <BottleIcon isOwn={status.author === user?.name} />
+                          <p style={{ fontSize: theme.fonts.sizes.sm, textAlign: 'center', marginTop: '8px' }}>
+                            🍾 🎤 Áudio na garrafa
+                          </p>
+                          {status.mediaUrl && (
+                            <audio controls style={{ width: '100%', marginTop: '8px' }}>
+                              <source src={status.mediaUrl} />
+                            </audio>
+                          )}
+                        </>
+                      ) : (
+                        <>
+                          <BottleIcon isOwn={status.author === user?.name} />
+                          <p style={{ fontSize: theme.fonts.sizes.md, textAlign: 'center', marginTop: '8px' }}>
+                            🍾 {status.content}
+                          </p>
+                        </>
+                      )}
                     </div>
 
-                    <div style={{ display: 'flex', gap: theme.spacing.md, alignItems: 'center' }}>
+                    <div style={{ display: 'flex', gap: theme.spacing.sm, alignItems: 'center' }}>
                       <Badge variant="success">👁️ {status.views}</Badge>
                       <Button
                         variant="secondary"
                         style={{ flex: 1 }}
+                        onClick={() => handleLike(status.id)}
                       >
-                        ❤️ Curtir
+                        {status.liked ? '❤️ Curtido' : '🤍 Curtir'} {status.likes > 0 ? status.likes : ''}
                       </Button>
                     </div>
                   </Card>
@@ -169,10 +329,32 @@ export function Status() {
                 value={statusForm.text}
                 onChange={e => setStatusForm({ ...statusForm, text: e.target.value })}
                 placeholder="Compartilhe um momento..."
-                rows={5}
+                rows={4}
                 style={{ fontFamily: theme.fonts.family.base }}
-                required
               />
+
+              {/* Preview do mídia */}
+              {statusForm.mediaUrl && (
+                <div style={{ marginBottom: theme.spacing.md }}>
+                  {statusForm.mediaType === 'video' ? (
+                    <div style={{ textAlign: 'center', padding: theme.spacing.lg, background: theme.colors.background, borderRadius: theme.borderRadius.md }}>
+                      <p style={{ fontSize: '40px', marginBottom: theme.spacing.sm }}>🛢️</p>
+                      <p style={{ fontSize: theme.fonts.sizes.sm, color: theme.colors.textSecondary }}>Vídeo gravado (barril)</p>
+                    </div>
+                  ) : statusForm.mediaType === 'audio' ? (
+                    <div style={{ textAlign: 'center', padding: theme.spacing.lg, background: theme.colors.background, borderRadius: theme.borderRadius.md }}>
+                      <p style={{ fontSize: '40px', marginBottom: theme.spacing.sm }}>🍾</p>
+                      <p style={{ fontSize: theme.fonts.sizes.sm, color: theme.colors.textSecondary }}>Áudio gravado (garrafa)</p>
+                    </div>
+                  ) : null}
+                </div>
+              )}
+
+              {/* Gravadores */}
+              <div style={{ display: 'flex', gap: theme.spacing.md, marginBottom: theme.spacing.lg }}>
+                <AudioRecorder onRecordingComplete={handleAudioRecording} />
+                <VideoRecorder onRecordingComplete={handleVideoRecording} />
+              </div>
 
               <div style={{ display: 'flex', gap: theme.spacing.md }}>
                 <Button
@@ -185,7 +367,10 @@ export function Status() {
                 <Button
                   type="button"
                   variant="secondary"
-                  onClick={() => setMode('view')}
+                  onClick={() => {
+                    setMode('view')
+                    setStatusForm({ text: '', mediaUrl: '', mediaType: '' })
+                  }}
                   style={{ flex: 1 }}
                 >
                   Cancelar

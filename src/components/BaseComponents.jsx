@@ -72,9 +72,9 @@ export function Button({ children, variant = 'primary', ...props }) {
       color: theme.colors.text,
     },
     secondary: {
-      background: theme.colors.surface,
+      background: theme.colors.primary,
       color: theme.colors.text,
-      border: `1px solid ${theme.colors.border}`,
+      border: `1px solid ${theme.colors.primary}`,
     },
     danger: {
       background: theme.colors.error,
