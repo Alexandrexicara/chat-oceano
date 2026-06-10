@@ -2,7 +2,7 @@
 
 export const theme = {
   colors: {
-    primary: '#0066cc',        // Azul oceano
+    primary: '#4ade80',        // Verde clarinho
     secondary: '#00a3ff',      // Azul claro
     accent: '#ff6b6b',         // Coral/destaque
     background: '#0a1628',     // Azul escuro

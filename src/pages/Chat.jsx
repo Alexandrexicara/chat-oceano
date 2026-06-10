@@ -338,7 +338,7 @@ function Bottle({ message, onClick, index }) {
         {/* Gargalo (horizontal) */}
         <div style={{
           width: '22px', height: '16px',
-          background: isOwn ? '#0066cc' : '#1a4d6d',
+          background: isOwn ? '#4ade80' : '#1a4d6d',
           border: `1px solid ${theme.colors.secondary}`,
           borderRadius: '0 3px 3px 0',
         }} />
@@ -403,23 +403,24 @@ function Barrel({ message, onClick, index }) {
           height: '100%',
           position: 'relative',
         }}>
-          {/* Imagem do barril (se existir) */}
+          {/* Imagem do barril */}
           <img 
-            src="/img/barril.png" 
+            src="/img/barril.png"
             alt="Barril de vídeo"
             style={{
               width: '100%',
               height: '100%',
               objectFit: 'contain',
               filter: isOwn 
-                ? 'drop-shadow(0 0 12px rgba(0,163,255,0.5)) brightness(1.1)'
+                ? 'drop-shadow(0 0 12px rgba(74,222,128,0.5)) brightness(1.1)'
                 : 'drop-shadow(0 0 12px rgba(139,105,20,0.5))',
             }}
             onError={(e) => {
-              // Se imagem falhar, esconde e mostra barril CSS
+              console.log('Erro ao carregar barril.png')
               e.target.style.display = 'none'
               e.target.nextSibling.style.display = 'flex'
             }}
+            onLoad={() => console.log('Barril carregado com sucesso!')}
           />
           
           {/* Barril CSS (fallback se imagem não carregar) */}
