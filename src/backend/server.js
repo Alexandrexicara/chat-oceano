@@ -148,6 +148,18 @@ app.post('/api/messages', async (req, res) => {
   }
 });
 
+// Buscar mensagens do oceano (públicas) - DEVE vir antes de /:userId1/:userId2
+app.get('/api/messages/oceano', async (req, res) => {
+  try {
+    const result = await pool.query(
+      'SELECT * FROM messages WHERE is_oceano = true ORDER BY created_at DESC LIMIT 100'
+    );
+    res.json(result.rows);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
 // Buscar mensagens de um chat
 app.get('/api/messages/:userId1/:userId2', async (req, res) => {
   const { userId1, userId2 } = req.params;
@@ -158,18 +170,6 @@ app.get('/api/messages/:userId1/:userId2', async (req, res) => {
           OR (sender_id = $2 AND receiver_id = $1)
        ORDER BY created_at ASC`,
       [userId1, userId2]
-    );
-    res.json(result.rows);
-  } catch (error) {
-    res.status(500).json({ error: error.message });
-  }
-});
-
-// Buscar mensagens do oceano (públicas)
-app.get('/api/messages/oceano', async (req, res) => {
-  try {
-    const result = await pool.query(
-      'SELECT * FROM messages WHERE is_oceano = true ORDER BY created_at DESC LIMIT 100'
     );
     res.json(result.rows);
   } catch (error) {
@@ -235,8 +235,8 @@ server.listen(PORT, async () => {
   await initializeDatabase();
 });
 
-// Rota catch-all para servir o frontend em produção
-app.get('*', (req, res) => {
+// Rota catch-all para servir o frontend em produção (Express 5 syntax)
+app.get('/{*splat}', (req, res) => {
   const indexPath = path.join(__dirname, '../../dist/index.html');
   res.sendFile(indexPath);
 });
