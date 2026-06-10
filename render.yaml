@@ -1,0 +1,6 @@
+# Render Deploy Configuration
+# This app serves both frontend and backend
+
+# Para produção, você precisa:
+# 1. Build do frontend: npm run build
+# 2. Servir arquivos estáticos do backend

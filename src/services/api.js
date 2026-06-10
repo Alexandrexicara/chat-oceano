@@ -12,6 +12,11 @@ const api = axios.create({
 
 // ===== USUÁRIOS =====
 
+export const loginUser = async (userData) => {
+  const response = await api.post('/auth/login', userData);
+  return response.data;
+};
+
 export const createUser = async (userData) => {
   const response = await api.post('/users', userData);
   return response.data;

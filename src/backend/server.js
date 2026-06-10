@@ -17,15 +17,22 @@ const app = express();
 const server = createServer(app);
 const io = new Server(server, {
   cors: {
-    origin: "http://localhost:5173",
+    origin: ["http://localhost:5173", "http://localhost:5174", "http://localhost:5175"],
     methods: ["GET", "POST"]
   }
 });
 
 // Middleware
-app.use(cors());
+app.use(cors({
+  origin: ["http://localhost:5173", "http://localhost:5174", "http://localhost:5175"],
+  credentials: true
+}));
 app.use(express.json());
 app.use('/uploads', express.static(path.join(__dirname, '../public/uploads')));
+
+// Servir arquivos estáticos do frontend em produção
+const frontendPath = path.join(__dirname, '../../dist');
+app.use(express.static(frontendPath));
 
 // Pool de conexão com PostgreSQL
 const pool = new Pool({
@@ -70,6 +77,27 @@ app.post('/api/upload', upload.single('file'), (req, res) => {
 });
 
 // ===== USUÁRIOS =====
+
+// Login ou criar usuário
+app.post('/api/auth/login', async (req, res) => {
+  const { username, name } = req.body;
+  try {
+    // Tentar encontrar usuário
+    let result = await pool.query('SELECT * FROM users WHERE username = $1', [username]);
+    
+    if (result.rows.length === 0) {
+      // Criar novo usuário
+      result = await pool.query(
+        'INSERT INTO users (name, username, bio) VALUES ($1, $2, $3) RETURNING *',
+        [name || username, username, 'Novo no Oceanos 🌊']
+      );
+    }
+    
+    res.json(result.rows[0]);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
 
 // Criar usuário
 app.post('/api/users', async (req, res) => {
@@ -205,6 +233,12 @@ server.listen(PORT, async () => {
   
   // Criar tabelas se não existirem
   await initializeDatabase();
+});
+
+// Rota catch-all para servir o frontend em produção
+app.get('*', (req, res) => {
+  const indexPath = path.join(__dirname, '../../dist/index.html');
+  res.sendFile(indexPath);
 });
 
 async function initializeDatabase() {

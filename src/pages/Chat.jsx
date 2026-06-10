@@ -672,6 +672,12 @@ export function Chat({ oceanoMode }) {
   // Carregar dados do backend
   useEffect(() => {
     const loadData = async () => {
+      if (!user?.id) {
+        console.log('Usuário não autenticado, usando dados mockados')
+        setLoading(false)
+        return
+      }
+
       try {
         // Carregar mensagens do oceano
         const oceanoMessages = await getOceanoMessages()
@@ -682,18 +688,23 @@ export function Chat({ oceanoMode }) {
           time: new Date(msg.created_at).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })
         })))
 
-        // Carregar contatos
-        const userContacts = await getContacts(user?.id)
-        if (userContacts.length > 0) {
-          setContacts(userContacts.map(contact => ({
-            id: contact.id,
-            name: contact.name,
-            username: contact.username,
-            avatar: contact.avatar || '👤',
-            status: contact.status || 'Offline',
-            lastMessage: 'Clique para conversar',
-            time: 'Agora'
-          })))
+        // Carregar contatos (se usuário existir no banco)
+        try {
+          const userContacts = await getContacts(user.id)
+          if (userContacts.length > 0) {
+            setContacts(userContacts.map(contact => ({
+              id: contact.id,
+              name: contact.name,
+              username: contact.username,
+              avatar: contact.avatar || '👤',
+              status: contact.status || 'Offline',
+              lastMessage: 'Clique para conversar',
+              time: 'Agora'
+            })))
+          }
+        } catch (error) {
+          console.log('Usuário não existe no banco ainda, usando contatos mockados')
+          // Usar contatos mockados se usuário não existir
         }
         
         setLoading(false)
@@ -703,9 +714,7 @@ export function Chat({ oceanoMode }) {
       }
     }
 
-    if (user?.id) {
-      loadData()
-    }
+    loadData()
   }, [user])
 
   // Configurar WebSocket

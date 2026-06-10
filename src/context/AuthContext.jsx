@@ -1,4 +1,5 @@
 import { createContext, useState, useContext, useEffect } from 'react'
+import { loginUser } from '../services/api'
 
 const AuthContext = createContext()
 
@@ -17,38 +18,81 @@ export function AuthProvider({ children }) {
     setLoading(false)
   }, [])
 
-  const register = (userData) => {
-    const newUser = {
-      id: Date.now(),
-      ...userData,
-      createdAt: new Date().toISOString(),
-      followers: 0,
-      statusCount: 0,
-      messagesCount: 0,
+  const register = async (userData) => {
+    try {
+      // Registrar no backend
+      const backendUser = await loginUser({
+        username: userData.username,
+        name: userData.name
+      })
+      
+      const newUser = {
+        ...backendUser,
+        createdAt: backendUser.created_at || new Date().toISOString(),
+        followers: 0,
+        statusCount: 0,
+        messagesCount: 0,
+      }
+      
+      setUser(newUser)
+      localStorage.setItem('oceanos_user', JSON.stringify(newUser))
+      return newUser
+    } catch (error) {
+      console.error('Erro ao registrar:', error)
+      // Fallback local
+      const newUser = {
+        id: Date.now(),
+        ...userData,
+        createdAt: new Date().toISOString(),
+        followers: 0,
+        statusCount: 0,
+        messagesCount: 0,
+      }
+      setUser(newUser)
+      localStorage.setItem('oceanos_user', JSON.stringify(newUser))
+      return newUser
     }
-    setUser(newUser)
-    localStorage.setItem('oceanos_user', JSON.stringify(newUser))
-    return newUser
   }
 
-  const login = (email, password) => {
-    // Simular login (em produção seria feito no backend)
-    const user = {
-      id: Date.now(),
-      email,
-      name: email.split('@')[0],
-      username: email.split('@')[0],
-      bio: '',
-      city: '',
-      country: '',
-      profileImage: '',
-      followers: 0,
-      statusCount: 0,
-      messagesCount: 0,
+  const login = async (email, password) => {
+    try {
+      // Login no backend
+      const username = email.split('@')[0]
+      const backendUser = await loginUser({
+        username,
+        name: username
+      })
+      
+      const user = {
+        ...backendUser,
+        followers: 0,
+        statusCount: 0,
+        messagesCount: 0,
+      }
+      
+      setUser(user)
+      localStorage.setItem('oceanos_user', JSON.stringify(user))
+      return user
+    } catch (error) {
+      console.error('Erro ao fazer login:', error)
+      // Fallback local
+      const user = {
+        id: Date.now(),
+        email,
+        name: email.split('@')[0],
+        username: email.split('@')[0],
+        bio: '',
+        city: '',
+        country: '',
+        profileImage: '',
+        followers: 0,
+        statusCount: 0,
+        messagesCount: 0,
+      }
+      setUser(user)
+      localStorage.setItem('oceanos_user', JSON.stringify(user))
+      return user
     }
-    setUser(user)
-    localStorage.setItem('oceanos_user', JSON.stringify(user))
-    return user
   }
 
   const logout = () => {
