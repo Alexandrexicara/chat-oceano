@@ -40,6 +40,7 @@ export function Auth() {
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
+        overflowY: 'auto',
       }}
     >
       <Container style={{ maxWidth: '400px', width: '100%' }}>

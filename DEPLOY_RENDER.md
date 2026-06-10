@@ -1,6 +1,6 @@
 # 🚀 Deploy no Render
 
-## Configuração do Serviço Web
+## ⚠️ IMPORTANTE - Configuração Correta
 
 ### Build Command
 ```bash
@@ -11,6 +11,8 @@ npm install && npm run build
 ```bash
 npm start
 ```
+
+**NÃO use `npm run dev`** - isso roda o Vite que só funciona em desenvolvimento!
 
 ### Environment Variables
 Adicione estas variáveis de ambiente no Render:

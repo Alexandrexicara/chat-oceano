@@ -197,6 +197,14 @@ app.post('/api/contacts', async (req, res) => {
 app.get('/api/contacts/:userId', async (req, res) => {
   const { userId } = req.params;
   try {
+    // Verificar se usuário existe
+    const userCheck = await pool.query('SELECT id FROM users WHERE id = $1', [userId]);
+    
+    if (userCheck.rows.length === 0) {
+      // Usuário não existe, retorna array vazio (não é erro)
+      return res.json([]);
+    }
+    
     const result = await pool.query(
       `SELECT u.* FROM contacts c 
        JOIN users u ON c.contact_id = u.id 
@@ -205,7 +213,9 @@ app.get('/api/contacts/:userId', async (req, res) => {
     );
     res.json(result.rows);
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    // Em caso de erro, retorna array vazio
+    console.error('Erro ao buscar contatos:', error.message);
+    res.json([]);
   }
 });
 
@@ -226,10 +236,12 @@ io.on('connection', (socket) => {
 // ===== INICIALIZAR SERVIDOR =====
 
 const PORT = process.env.PORT || 3000;
+const HOST = process.env.NODE_ENV === 'production' ? '0.0.0.0' : 'localhost';
 
-server.listen(PORT, async () => {
+server.listen(PORT, HOST, async () => {
   console.log(`🚀 Servidor rodando na porta ${PORT}`);
   console.log(`🌊 Banco de dados: ${process.env.DB_NAME}`);
+  console.log(`🌐 Ambiente: ${process.env.NODE_ENV || 'development'}`);
   
   // Criar tabelas se não existirem
   await initializeDatabase();

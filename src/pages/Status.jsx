@@ -183,7 +183,7 @@ export function Status() {
   )
 
   return (
-    <div style={{ minHeight: '100vh', background: theme.colors.background }}>
+    <div style={{ minHeight: '100vh', background: theme.colors.background, overflowY: 'auto' }}>
       <Header>
         <h1 style={{ fontSize: theme.fonts.sizes.xl }}>🌊 Status • Garrafas no Mar</h1>
         <Button variant="secondary" onClick={logout}>
