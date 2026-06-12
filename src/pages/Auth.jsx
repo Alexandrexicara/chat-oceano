@@ -1,10 +1,13 @@
 import { useState } from 'react'
 import { useAuth } from '../context/AuthContext'
 import { Container, Card, Button, Input } from '../components/BaseComponents'
+import { OceanosTutorial } from '../components/OceanosTutorial'
+import { useCDCoin } from '../hooks/useCDCoin'
 import { theme } from '../styles/theme'
 
 export function Auth() {
   const [mode, setMode] = useState('login') // login ou register
+  const [showTutorial, setShowTutorial] = useState(false)
   const [formData, setFormData] = useState({
     email: '',
     password: '',
@@ -13,6 +16,7 @@ export function Auth() {
     phone: '', // Número de telefone para WhatsApp
   })
   const { login, register } = useAuth()
+  const { adicionarPontos } = useCDCoin()
 
   const handleChange = (e) => {
     const { name, value } = e.target
@@ -30,6 +34,9 @@ export function Auth() {
         email: formData.email,
         password: formData.password,
         phone: formData.phone, // Enviar telefone
+      }).then(() => {
+        // Dar 50 CDCOIN de boas-vindas
+        adicionarPontos(50, '🎉 Cadastro realizado!')
       })
     }
   }
@@ -54,6 +61,22 @@ export function Auth() {
             <p style={{ color: theme.colors.textSecondary }}>
               {mode === 'login' ? 'Bem-vindo de volta!' : 'Junte-se à nossa comunidade'}
             </p>
+            {mode === 'register' && (
+              <button
+                onClick={() => setShowTutorial(true)}
+                style={{
+                  background: 'none',
+                  border: 'none',
+                  color: theme.colors.secondary,
+                  cursor: 'pointer',
+                  textDecoration: 'underline',
+                  fontSize: theme.fonts.sizes.sm,
+                  marginTop: theme.spacing.sm,
+                }}
+              >
+                ❓ Como funciona o Oceanos?
+              </button>
+            )}
           </div>
 
           <form onSubmit={handleSubmit}>
@@ -137,6 +160,11 @@ export function Auth() {
           </div>
         </Card>
       </Container>
+
+      {/* Tutorial do Oceanos */}
+      {showTutorial && (
+        <OceanosTutorial onClose={() => setShowTutorial(false)} />
+      )}
     </div>
   )
 }

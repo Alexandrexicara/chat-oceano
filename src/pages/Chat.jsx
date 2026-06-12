@@ -2,6 +2,8 @@ import { useState, useRef, useEffect, useMemo } from 'react'
 import { useAuth } from '../context/AuthContext'
 import { Header, Button, Input, Badge } from '../components/BaseComponents'
 import { WhatsAppSync } from '../components/WhatsAppSync'
+import { MiniAnuncio } from '../components/MiniAnuncio'
+import { useCDCoin, CDCoinDisplay } from '../hooks/useCDCoin'
 import { theme } from '../styles/theme'
 import { playMessageSound, playBottleSound } from '../utils/sounds'
 import { getMessages, sendMessage as sendApiMessage, getOceanoMessages, getContacts } from '../services/api'
@@ -709,12 +711,19 @@ export function Chat({ oceanoMode }) {
   ])
   const [loading, setLoading] = useState(true)
   const [showWhatsAppSync, setShowWhatsAppSync] = useState(false)
+  const [showMiniAnuncio, setShowMiniAnuncio] = useState(false)
+  const { saldo, pontuar, adicionarPontos } = useCDCoin()
   const messagesEndRef = useRef(null)
   const fileInputRef = useRef(null)
   const audioInputRef = useRef(null)
   const oceanoFileRef = useRef(null)
   const videoRecorderRef = useRef(null)
   const socketRef = useRef(null)
+
+  // Pontuar acesso diário ao entrar no Chat
+  useEffect(() => {
+    pontuar.acessoDiario()
+  }, [])
 
   // Carregar dados do backend
   useEffect(() => {
@@ -862,6 +871,9 @@ export function Chat({ oceanoMode }) {
       }))
       setMessageText('')
 
+      // Pontuar por enviar mensagem
+      pontuar.mensagemEnviada()
+
       // Tocar som de garrafa
       playBottleSound()
     } catch (error) {
@@ -920,6 +932,13 @@ export function Chat({ oceanoMode }) {
           ...prev,
           [targetChat.id]: [...(prev[targetChat.id] || []), newMsg],
         }))
+
+        // Pontuar por enviar mídia
+        if (mediaType === 'video') {
+          pontuar.videoEnviado()
+        } else {
+          pontuar.mensagemEnviada()
+        }
 
         // Resposta automática
         setTimeout(() => {
@@ -1110,7 +1129,16 @@ export function Chat({ oceanoMode }) {
         <Component
           message={msg}
           index={idx}
-          onClick={() => setSelectedBottle(msg)}
+          onClick={() => {
+            setSelectedBottle(msg)
+            // Mostrar anúncio e dar pontos
+            setShowMiniAnuncio(true)
+            if (msg.mediaType === 'video') {
+              pontuar.videoAssistido()
+            } else {
+              pontuar.mensagemAberta()
+            }
+          }}
         />
       </div>
     )
@@ -1242,7 +1270,12 @@ export function Chat({ oceanoMode }) {
     <div style={{ minHeight: '100vh', background: theme.colors.background }}>
       <Header>
         <h1 style={{ fontSize: theme.fonts.sizes.xl }}>💬 Chat • Garrafas no Mar</h1>
-        <div style={{ display: 'flex', gap: '8px' }}>
+        <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+          {/* Exibir CDCOIN */}
+          <CDCoinDisplay 
+            saldo={saldo} 
+            onConvertClick={() => alert('Em breve: tela de conversão de CDCOIN!')}
+          />
           <Button 
             variant="primary" 
             onClick={() => setShowWhatsAppSync(true)}
@@ -1255,6 +1288,14 @@ export function Chat({ oceanoMode }) {
           </Button>
         </div>
       </Header>
+
+      {/* Mini-anuncio */}
+      {showMiniAnuncio && (
+        <MiniAnuncio onClose={() => {
+          setShowMiniAnuncio(false)
+          pontuar.anuncioAssistido()
+        }} />
+      )}
 
       {/* Modal de sincronização WhatsApp */}
       {showWhatsAppSync && (
