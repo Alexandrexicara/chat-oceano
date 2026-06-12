@@ -36,22 +36,26 @@ app.use(express.static(frontendPath));
 
 // Pool de conexão com PostgreSQL
 const pool = new Pool({
-  user: process.env.DB_USER,
-  password: process.env.DB_PASSWORD,
-  host: process.env.DB_HOST,
-  port: process.env.DB_PORT,
-  database: process.env.DB_NAME,
+  connectionString: process.env.DATABASE_URL || process.env.Database_Url,
   ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false,
   connectionTimeoutMillis: 10000, // 10 segundos timeout
 });
 
 // Log de diagnóstico do banco
 console.log('🔧 Configuração do Banco:');
-console.log(`   DB_HOST: ${process.env.DB_HOST || 'NÃO DEFINIDO'}`);
-console.log(`   DB_PORT: ${process.env.DB_PORT || 'NÃO DEFINIDO'}`);
-console.log(`   DB_NAME: ${process.env.DB_NAME || 'NÃO DEFINIDO'}`);
-console.log(`   DB_USER: ${process.env.DB_USER || 'NÃO DEFINIDO'}`);
-console.log(`   DB_PASSWORD: ${process.env.DB_PASSWORD ? '***definido***' : 'NÃO DEFINIDO'}`);
+const dbUrl = process.env.DATABASE_URL || process.env.Database_Url;
+if (dbUrl) {
+  console.log('   DATABASE_URL: ✅ definida');
+  console.log(`   Host: ${dbUrl.split('@')[1]?.split('/')[0] || 'N/A'}`);
+  console.log(`   Database: ${dbUrl.split('/').pop() || 'N/A'}`);
+} else {
+  console.log('   ⚠️ DATABASE_URL NÃO DEFINIDA!');
+  console.log(`   DB_HOST: ${process.env.DB_HOST || 'NÃO DEFINIDO'}`);
+  console.log(`   DB_PORT: ${process.env.DB_PORT || 'NÃO DEFINIDO'}`);
+  console.log(`   DB_NAME: ${process.env.DB_NAME || 'NÃO DEFINIDO'}`);
+  console.log(`   DB_USER: ${process.env.DB_USER || 'NÃO DEFINIDO'}`);
+  console.log(`   DB_PASSWORD: ${process.env.DB_PASSWORD ? '***definido***' : 'NÃO DEFINIDO'}`);
+}
 
 // Configuração do multer para uploads
 const storage = multer.diskStorage({
@@ -295,7 +299,9 @@ const HOST = process.env.NODE_ENV === 'production' ? '0.0.0.0' : 'localhost';
 
 server.listen(PORT, HOST, async () => {
   console.log(`🚀 Servidor rodando na porta ${PORT}`);
-  console.log(`🌊 Banco de dados: ${process.env.DB_NAME}`);
+  const dbUrl = process.env.DATABASE_URL || process.env.Database_Url;
+  const dbName = dbUrl ? dbUrl.split('/').pop() : process.env.DB_NAME;
+  console.log(`🌊 Banco de dados: ${dbName || 'NÃO CONFIGURADO'}`);
   console.log(`🌐 Ambiente: ${process.env.NODE_ENV || 'development'}`);
   
   // Criar tabelas se não existirem
