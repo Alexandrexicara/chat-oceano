@@ -32,7 +32,7 @@ export function Profile() {
   ]
 
   return (
-    <div style={{ minHeight: '100vh', background: theme.colors.background, overflowY: 'auto' }}>
+    <div style={{ minHeight: '100vh', background: theme.colors.background, overflowY: 'auto', display: 'flex', flexDirection: 'column' }}>
       <Header>
         <h1 style={{ fontSize: theme.fonts.sizes.xl }}>👤 Meu Perfil</h1>
         <Button variant="secondary" onClick={logout}>
@@ -40,7 +40,7 @@ export function Profile() {
         </Button>
       </Header>
 
-      <Container>
+      <Container style={{ flex: 1, overflowY: 'auto', maxHeight: 'calc(100vh - 70px)' }}>
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: theme.spacing.xl }}>
           {/* Perfil */}
           <Card>

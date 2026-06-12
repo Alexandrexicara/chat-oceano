@@ -183,7 +183,7 @@ export function Status() {
   )
 
   return (
-    <div style={{ minHeight: '100vh', background: theme.colors.background, overflowY: 'auto' }}>
+    <div style={{ minHeight: '100vh', background: theme.colors.background, overflowY: 'auto', display: 'flex', flexDirection: 'column' }}>
       <Header>
         <h1 style={{ fontSize: theme.fonts.sizes.xl }}>🌊 Status • Garrafas no Mar</h1>
         <Button variant="secondary" onClick={logout}>
@@ -191,7 +191,7 @@ export function Status() {
         </Button>
       </Header>
 
-      <Container>
+      <Container style={{ flex: 1, overflowY: 'auto', maxHeight: 'calc(100vh - 70px)' }}>
         {mode === 'view' ? (
           <>
             <div style={{ marginBottom: theme.spacing.xl }}>

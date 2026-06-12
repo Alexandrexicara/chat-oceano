@@ -482,6 +482,15 @@ function BottleModal({ message, onClose }) {
   const isOwn = message.sender === 'me'
   const isBarrel = message.mediaType === 'video'
 
+  // Fechar com tecla ESC
+  useEffect(() => {
+    const handleEsc = (e) => {
+      if (e.key === 'Escape') onClose()
+    }
+    window.addEventListener('keydown', handleEsc)
+    return () => window.removeEventListener('keydown', handleEsc)
+  }, [onClose])
+
   return (
     <div
       onClick={onClose}
@@ -490,6 +499,7 @@ function BottleModal({ message, onClose }) {
         background: 'rgba(0,0,0,0.7)',
         display: 'flex', alignItems: 'center', justifyContent: 'center',
         zIndex: 1000, animation: 'fadeIn 0.3s ease',
+        padding: '20px',
       }}
     >
       <div
@@ -501,13 +511,35 @@ function BottleModal({ message, onClose }) {
           borderRadius: theme.borderRadius.lg,
           padding: theme.spacing.xl,
           maxWidth: '500px', width: '90%',
+          maxHeight: '80vh',
+          overflowY: 'auto',
           border: isBarrel ? '3px solid #A0782C' : `2px solid ${theme.colors.secondary}`,
           boxShadow: isBarrel 
             ? '0 0 30px rgba(139,105,20,0.6), inset 0 0 50px rgba(0,0,0,0.3)'
             : theme.shadows.glow,
           animation: 'scaleUp 0.3s ease',
+          position: 'relative',
         }}
       >
+        {/* Botão X para fechar */}
+        <button
+          onClick={onClose}
+          style={{
+            position: 'absolute',
+            top: '10px',
+            right: '15px',
+            background: 'none',
+            border: 'none',
+            color: isBarrel ? '#FFD700' : theme.colors.text,
+            fontSize: '28px',
+            cursor: 'pointer',
+            padding: '5px',
+            lineHeight: '1',
+            zIndex: 10,
+          }}
+        >
+          ✕
+        </button>
         {/* Ícone */}
         <div style={{ textAlign: 'center', marginBottom: theme.spacing.lg }}>
           <span style={{ fontSize: '72px', filter: 'drop-shadow(0 4px 8px rgba(0,0,0,0.5))' }}>
