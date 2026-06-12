@@ -8,6 +8,18 @@
     <title>Oceanos • Mensageiro Pirata</title>
     <!-- Script de Anúncios Exoclick -->
     <script async type="application/javascript" src="https://a.magsrv.com/ad-provider.js"></script>
+    <script>
+      // Inicializar AdProvider globalmente
+      (window.AdProvider = window.AdProvider || []).push({"serve": {}});
+      
+      // Log quando o script carregar
+      console.log('📺 Exoclick Ad Provider inicializado');
+      
+      // Listener para quando o script terminar de carregar
+      window.addEventListener('load', function() {
+        console.log('✅ Página carregada - Anúncios prontos');
+      });
+    </script>
   </head>
   <body>
     <div id="root"></div>

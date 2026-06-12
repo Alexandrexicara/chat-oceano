@@ -1,5 +1,5 @@
 import { createContext, useState, useContext, useEffect } from 'react'
-import { loginUser } from '../services/api'
+import { loginUser, updateUserProfile } from '../services/api'
 
 const AuthContext = createContext()
 
@@ -124,11 +124,30 @@ export function AuthProvider({ children }) {
     setContacts(contacts.filter(c => c.id !== contactId))
   }
 
-  const updateProfile = (updates) => {
-    const updated = { ...user, ...updates }
-    setUser(updated)
-    localStorage.setItem('oceanos_user', JSON.stringify(updated))
-    return updated
+  const updateProfile = async (updates) => {
+    try {
+      // Atualizar no backend
+      if (user?.username) {
+        const updatedUser = await updateUserProfile(user.username, updates)
+        const updated = { ...user, ...updatedUser }
+        setUser(updated)
+        localStorage.setItem('oceanos_user', JSON.stringify(updated))
+        return updated
+      }
+      
+      // Fallback local
+      const updated = { ...user, ...updates }
+      setUser(updated)
+      localStorage.setItem('oceanos_user', JSON.stringify(updated))
+      return updated
+    } catch (error) {
+      console.error('Erro ao atualizar perfil:', error)
+      // Fallback local em caso de erro
+      const updated = { ...user, ...updates }
+      setUser(updated)
+      localStorage.setItem('oceanos_user', JSON.stringify(updated))
+      return updated
+    }
   }
 
   const value = {

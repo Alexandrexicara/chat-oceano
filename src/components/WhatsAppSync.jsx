@@ -13,21 +13,21 @@ export function WhatsAppSync({ onClose }) {
   const [loading, setLoading] = useState(false)
   const [manualPhone, setManualPhone] = useState('')
 
-  // Simular contatos do WhatsApp (em produção, viria do backend)
+  // Carregar contatos do localStorage (em produção, viria do backend)
   useEffect(() => {
-    // Mock de contatos do WhatsApp - em produção seria via API
-    const mockContacts = [
-      { name: 'João Silva', phone: '+5511999991111', avatar: '👤' },
-      { name: 'Maria Santos', phone: '+5511999992222', avatar: '👩' },
-      { name: 'Pedro Costa', phone: '+5511999993333', avatar: '🧑' },
-      { name: 'Ana Oliveira', phone: '+5511999994444', avatar: '👧' },
-      { name: 'Carlos Mendes', phone: '+5511999995555', avatar: '👨' },
-    ]
-    setWhatsappContacts(mockContacts)
-  }, [])
+    const savedContacts = localStorage.getItem(`whatsapp_contacts_${user?.id}`)
+    if (savedContacts) {
+      setWhatsappContacts(JSON.parse(savedContacts))
+    }
+  }, [user])
 
   // Sincronizar contatos com o Oceanos
   const handleSync = async () => {
+    if (whatsappContacts.length === 0) {
+      alert('Adicione pelo menos um contato primeiro!')
+      return
+    }
+    
     setLoading(true)
     try {
       const phones = whatsappContacts.map(c => c.phone)
@@ -53,6 +53,27 @@ export function WhatsAppSync({ onClose }) {
       
       setOceanosUsers(oceanosUsersList)
       setNonUsers(nonUsersList)
+      
+      // Salvar contatos sincronizados no localStorage
+      localStorage.setItem(`whatsapp_contacts_${user?.id}`, JSON.stringify(whatsappContacts))
+      
+      // Mostrar resumo dos resultados
+      const total = whatsappContacts.length
+      const encontrados = oceanosUsersList.length
+      const naoEncontrados = nonUsersList.length
+      
+      let mensagem = `📊 Resultado da Sincronização:\n\n`
+      mensagem += `📱 Total de contatos: ${total}\n`
+      mensagem += `✅ No Oceanos: ${encontrados}\n`
+      mensagem += `📲 Não encontrados: ${naoEncontrados}\n\n`
+      
+      if (encontrados > 0) {
+        mensagem += `🎉 Você tem ${encontrados} amigo(s) no Oceanos!`
+      } else {
+        mensagem += `👆 Nenhum amigo encontrado. Convide-os para entrar!`
+      }
+      
+      alert(mensagem)
     } catch (error) {
       console.error('Erro ao sincronizar:', error)
       alert('Erro ao sincronizar contatos. Tente novamente.')
@@ -68,7 +89,14 @@ export function WhatsAppSync({ onClose }) {
       
       if (result.whatsappLink) {
         // Abrir WhatsApp Web com mensagem pronta
-        window.open(result.whatsappLink, '_blank')
+        const confirmed = window.confirm(
+          `📱 Abrir WhatsApp para convidar ${contact.name}?\n\n` +
+          `O link será aberto com uma mensagem de convite pronta para enviar!`
+        )
+        
+        if (confirmed) {
+          window.open(result.whatsappLink, '_blank')
+        }
       }
     } catch (error) {
       console.error('Erro ao enviar convite:', error)
@@ -84,13 +112,18 @@ export function WhatsAppSync({ onClose }) {
     }
     
     const newContact = {
+      id: Date.now(),
       name: 'Contato adicionado',
       phone: manualPhone,
       avatar: '👤'
     }
     
-    setWhatsappContacts([...whatsappContacts, newContact])
+    const updatedContacts = [...whatsappContacts, newContact]
+    setWhatsappContacts(updatedContacts)
+    // Salvar no localStorage
+    localStorage.setItem(`whatsapp_contacts_${user?.id}`, JSON.stringify(updatedContacts))
     setManualPhone('')
+    alert('Contato adicionado! Clique em "Sincronizar" para buscar no Oceanos.')
   }
 
   return (
@@ -151,27 +184,56 @@ export function WhatsAppSync({ onClose }) {
             onChange={(e) => setManualPhone(e.target.value)}
             style={{ flex: 1 }}
           />
-          <Button onClick={handleAddManual} variant="secondary">
+          <Button 
+            onClick={handleAddManual} 
+            variant="secondary"
+            style={{ 
+              padding: `${theme.spacing.md} ${theme.spacing.lg}`,
+              fontSize: theme.fonts.sizes.md,
+            }}
+          >
             ➕ Adicionar
           </Button>
         </div>
 
-        {/* Botão sincronizar */}
-        <Button 
-          onClick={handleSync} 
-          variant="primary"
-          style={{ width: '100%', marginBottom: theme.spacing.xl }}
-          disabled={loading}
-        >
-          {loading ? '⏳ Sincronizando...' : '🔄 Sincronizar com Oceanos'}
-        </Button>
+        {/* Botão sincronizar - HORIZONTAL E MAIOR */}
+        <div style={{ 
+          display: 'flex', 
+          gap: theme.spacing.md,
+          marginBottom: theme.spacing.xl,
+          flexWrap: 'wrap',
+        }}>
+          <Button 
+            onClick={handleSync} 
+            variant="primary"
+            style={{ 
+              flex: 1,
+              minWidth: '140px',
+              padding: `${theme.spacing.md} ${theme.spacing.lg}`,
+              fontSize: theme.fonts.sizes.lg,
+            }}
+            disabled={loading}
+          >
+            {loading ? '⏳ Sincronizando...' : '🔄 Sincronizar'}
+          </Button>
+          
+          <Button 
+            onClick={onClose}
+            variant="secondary"
+            style={{ 
+              flex: 1,
+              minWidth: '140px',
+              padding: `${theme.spacing.md} ${theme.spacing.lg}`,
+              fontSize: theme.fonts.sizes.lg,
+            }}
+          >
+            ✖️ Fechar
+          </Button>
+        </div>
 
         {/* Usuários do Oceanos */}
         {oceanosUsers.length > 0 && (
           <div style={{ marginBottom: theme.spacing.xl }}>
-            <h3 style={{ color: theme.colors.secondary, marginBottom: theme.spacing.md }}>
-              ✅ Amigos no Oceanos ({oceanosUsers.length})
-            </h3>
             {oceanosUsers.map(user => (
               <div key={user.id} style={{
                 display: 'flex',
@@ -192,7 +254,16 @@ export function WhatsAppSync({ onClose }) {
                     @{user.username} • {user.status}
                   </p>
                 </div>
-                <Button variant="primary" style={{ padding: '8px 16px' }}>
+                <Button 
+                  variant="primary" 
+                  onClick={() => {
+                    alert('💬 Em breve você poderá conversar com este contato!')
+                  }}
+                  style={{ 
+                    padding: `${theme.spacing.md} ${theme.spacing.lg}`,
+                    fontSize: theme.fonts.sizes.md,
+                  }}
+                >
                   💬 Conversar
                 </Button>
               </div>
@@ -202,10 +273,7 @@ export function WhatsAppSync({ onClose }) {
 
         {/* Não-usuários */}
         {nonUsers.length > 0 && (
-          <div>
-            <h3 style={{ color: '#ff9800', marginBottom: theme.spacing.md }}>
-              📲 Convide seus amigos ({nonUsers.length})
-            </h3>
+          <div style={{ marginBottom: theme.spacing.xl }}>
             {nonUsers.map(contact => (
               <div key={contact.phone} style={{
                 display: 'flex',
@@ -229,7 +297,10 @@ export function WhatsAppSync({ onClose }) {
                 <Button 
                   variant="secondary" 
                   onClick={() => handleSendInvite(contact)}
-                  style={{ padding: '8px 16px' }}
+                  style={{ 
+                    padding: `${theme.spacing.md} ${theme.spacing.lg}`,
+                    fontSize: theme.fonts.sizes.md,
+                  }}
                 >
                   📩 Convidar
                 </Button>
@@ -243,9 +314,72 @@ export function WhatsAppSync({ onClose }) {
             textAlign: 'center',
             padding: theme.spacing.xl,
             color: theme.colors.textSecondary,
+            background: theme.colors.background,
+            borderRadius: theme.borderRadius.md,
           }}>
-            <p style={{ fontSize: '48px', marginBottom: theme.spacing.md }}>👆</p>
-            <p>Clique em "Sincronizar" para encontrar seus amigos!</p>
+            <p style={{ fontSize: '48px', marginBottom: theme.spacing.md }}>📲</p>
+            <p style={{ fontSize: theme.fonts.sizes.md, marginBottom: theme.spacing.sm }}>
+              <strong>Adicione contatos acima</strong>
+            </p>
+            <p style={{ fontSize: theme.fonts.sizes.sm }}>
+              Digite o número e clique em "Adicionar".<br/>
+              Depois clique em "Sincronizar" para buscar amigos no Oceanos!
+            </p>
+          </div>
+        )}
+
+        {/* Resultados da sincronização */}
+        {oceanosUsers.length > 0 && (
+          <div style={{ 
+            marginTop: theme.spacing.xl,
+            padding: theme.spacing.lg,
+            background: 'rgba(74, 222, 128, 0.1)',
+            borderRadius: theme.borderRadius.md,
+            border: `2px solid ${theme.colors.success}`,
+          }}>
+            <h3 style={{ 
+              color: theme.colors.success, 
+              marginBottom: theme.spacing.md,
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px',
+            }}>
+              ✅ Amigos no Oceanos ({oceanosUsers.length})
+            </h3>
+            <p style={{ 
+              fontSize: theme.fonts.sizes.sm,
+              color: theme.colors.textSecondary,
+              marginBottom: theme.spacing.md,
+            }}>
+              Estes contatos já estão usando o Oceanos!
+            </p>
+          </div>
+        )}
+
+        {nonUsers.length > 0 && (
+          <div style={{ 
+            marginTop: theme.spacing.lg,
+            padding: theme.spacing.lg,
+            background: 'rgba(255, 152, 0, 0.1)',
+            borderRadius: theme.borderRadius.md,
+            border: '2px solid #ff9800',
+          }}>
+            <h3 style={{ 
+              color: '#ff9800', 
+              marginBottom: theme.spacing.md,
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px',
+            }}>
+              📲 Convide seus amigos ({nonUsers.length})
+            </h3>
+            <p style={{ 
+              fontSize: theme.fonts.sizes.sm,
+              color: theme.colors.textSecondary,
+              marginBottom: theme.spacing.md,
+            }}>
+              Estes contatos ainda não usam o Oceanos. Convide-os!
+            </p>
           </div>
         )}
       </Card>

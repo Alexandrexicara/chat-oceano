@@ -6,6 +6,7 @@ import { AudioRecorder, VideoRecorder } from '../components/AudioVideoRecorder'
 import { playBottleSound } from '../utils/sounds'
 import { MiniAnuncio } from '../components/MiniAnuncio'
 import { ExoclickAd } from '../components/ExoclickAd'
+import { TestExoclickAd } from '../components/TestExoclickAd'
 
 export function Status() {
   const { user, logout } = useAuth()
@@ -585,6 +586,9 @@ export function Status() {
           </div>
         </div>
       )}
+
+      {/* Componente de teste para anúncios - remover em produção */}
+      {process.env.NODE_ENV === 'development' && <TestExoclickAd />}
     </div>
   )
 }

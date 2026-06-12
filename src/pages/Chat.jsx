@@ -624,48 +624,8 @@ function BottleModal({ message, onClose }) {
   )
 }
 
-const mockContacts = [
-  { id: 1, name: 'João Silva', username: 'joao_silva', avatar: '👤', status: 'Online', lastMessage: 'Olá, tudo bem?', time: '10:30' },
-  { id: 2, name: 'Maria Santos', username: 'maria_santos', avatar: '👩', status: 'Online', lastMessage: 'Vamos marcar algo!', time: '09:15' },
-  { id: 3, name: 'Pedro Costa', username: 'pedro_costa', avatar: '🧑', status: 'Offline', lastMessage: 'Até amanhã!', time: 'Ontem' },
-  { id: 4, name: 'Ana Oliveira', username: 'ana_oliveira', avatar: '👧', status: 'Online', lastMessage: 'Que legal! 🎉', time: 'Ontem' },
-  { id: 5, name: 'Carlos Mendes', username: 'carlos_m', avatar: '👨', status: 'Online', lastMessage: 'Bora jogar?', time: '08:45' },
-  { id: 6, name: 'Fernanda Lima', username: 'fer_lima', avatar: '👩‍🦰', status: 'Offline', lastMessage: 'Foto enviada', time: 'Ontem' },
-  { id: 7, name: 'Ricardo Souza', username: 'ricardo_s', avatar: '🧔', status: 'Online', lastMessage: 'Show! 🎸', time: '07:20' },
-  { id: 8, name: 'Juliana Alves', username: 'ju_alves', avatar: '👱‍♀️', status: 'Online', lastMessage: 'Vamos nessa! 🌊', time: '06:50' },
-]
-
-const mockMessages = {
-  1: [
-    { id: 1, sender: 'them', senderName: 'João Silva', text: 'Olá, tudo bem?', time: '10:30' },
-    { id: 2, sender: 'me', senderName: 'Você', text: 'Oi João! Tudo ótimo e você?', time: '10:31' },
-    { id: 3, sender: 'them', senderName: 'João Silva', text: 'Também estou bem! Vamos combinar algo?', time: '10:32' },
-    // Mensagem de teste com vídeo (barril)
-    { 
-      id: 999, 
-      sender: 'them', 
-      senderName: 'João Silva', 
-      text: '🎥 Olha esse vídeo!', 
-      time: '10:33',
-      mediaType: 'video',
-      mediaUrl: '',
-      fileName: 'video_teste.webm',
-    },
-  ],
-  2: [
-    { id: 1, sender: 'them', senderName: 'Maria Santos', text: 'E aí! Vamos marcar algo!', time: '09:10' },
-    { id: 2, sender: 'me', senderName: 'Você', text: 'Claro! Que tal amanhã?', time: '09:12' },
-    { id: 3, sender: 'them', senderName: 'Maria Santos', text: 'Perfeito! 👍', time: '09:15' },
-  ],
-  3: [
-    { id: 1, sender: 'me', senderName: 'Você', text: 'Até amanhã Pedro!', time: '22:00' },
-    { id: 2, sender: 'them', senderName: 'Pedro Costa', text: 'Até! Descansa bem 😴', time: '22:05' },
-  ],
-  4: [
-    { id: 1, sender: 'them', senderName: 'Ana Oliveira', text: 'Vi que você postou um status novo!', time: '15:00' },
-    { id: 2, sender: 'me', senderName: 'Você', text: 'Sim! Que legal! 🎉', time: '15:05' },
-  ],
-}
+// REMOVIDO: Dados mockados - agora tudo é REAL do banco de dados
+// Contatos e mensagens vêm do PostgreSQL via API
 
 const autoResponses = [
   'Que legal! 🍾',
@@ -682,33 +642,13 @@ export function Chat({ oceanoMode }) {
   const { user, logout } = useAuth()
   const [selectedChat, setSelectedChat] = useState(null)
   const [messageText, setMessageText] = useState('')
-  const [messages, setMessages] = useState(mockMessages)
+  const [messages, setMessages] = useState({}) // REMOVIDO: mockMessages - agora vem do banco
   const [searchTerm, setSearchTerm] = useState('')
   const [selectedBottle, setSelectedBottle] = useState(null)
   const [oceanoText, setOceanoText] = useState('')
   const [showContactsOnMobile, setShowContactsOnMobile] = useState(true)
-  const [contacts, setContacts] = useState(mockContacts)
-  const [oceanoBottles, setOceanoBottles] = useState([
-    // Garrafa de texto
-    {
-      id: 1000,
-      sender: 'them',
-      senderName: 'Maria Santos',
-      text: 'Olá oceano! 🌊',
-      time: '10:00',
-    },
-    // Barril de vídeo (teste)
-    {
-      id: 1001,
-      sender: 'them',
-      senderName: 'João Silva',
-      text: '🎥 Vídeo para todos!',
-      time: '10:05',
-      mediaType: 'video',
-      mediaUrl: '',
-      fileName: 'video_oceano.webm',
-    },
-  ])
+  const [contacts, setContacts] = useState([]) // REMOVIDO: mockContacts - agora vem do banco
+  const [oceanoBottles, setOceanoBottles] = useState([]) // REMOVIDO: dados mockados - agora vem do banco
   const [loading, setLoading] = useState(true)
   const [showWhatsAppSync, setShowWhatsAppSync] = useState(false)
   const [showMiniAnuncio, setShowMiniAnuncio] = useState(false)
@@ -725,17 +665,17 @@ export function Chat({ oceanoMode }) {
     pontuar.acessoDiario()
   }, [])
 
-  // Carregar dados do backend
+  // Carregar dados REAIS do backend (PostgreSQL)
   useEffect(() => {
     const loadData = async () => {
       if (!user?.id) {
-        console.log('Usuário não autenticado, usando dados mockados')
+        console.log('⚠️ Usuário não autenticado')
         setLoading(false)
         return
       }
 
       try {
-        // Carregar mensagens do oceano
+        // Carregar mensagens REAIS do oceano
         const oceanoMessages = await getOceanoMessages()
         setOceanoBottles(oceanoMessages.map(msg => ({
           ...msg,
@@ -744,28 +684,25 @@ export function Chat({ oceanoMode }) {
           time: new Date(msg.created_at).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })
         })))
 
-        // Carregar contatos (se usuário existir no banco)
-        try {
-          const userContacts = await getContacts(user.id)
-          if (userContacts.length > 0) {
-            setContacts(userContacts.map(contact => ({
-              id: contact.id,
-              name: contact.name,
-              username: contact.username,
-              avatar: contact.avatar || '👤',
-              status: contact.status || 'Offline',
-              lastMessage: 'Clique para conversar',
-              time: 'Agora'
-            })))
-          }
-        } catch (error) {
-          console.log('Usuário não existe no banco ainda, usando contatos mockados')
-          // Usar contatos mockados se usuário não existir
+        // Carregar contatos REAIS do banco
+        const userContacts = await getContacts(user.id)
+        if (userContacts.length > 0) {
+          setContacts(userContacts.map(contact => ({
+            id: contact.id,
+            name: contact.name,
+            username: contact.username,
+            avatar: contact.avatar || '👤',
+            status: contact.status || 'Offline',
+            lastMessage: 'Clique para conversar',
+            time: 'Agora'
+          })))
+        } else {
+          console.log('📱 Nenhum contato encontrado. Use o WhatsApp Sync para adicionar!')
         }
         
         setLoading(false)
       } catch (error) {
-        console.error('Erro ao carregar dados:', error)
+        console.error('❌ Erro ao carregar dados do banco:', error)
         setLoading(false)
       }
     }
@@ -1298,8 +1235,10 @@ export function Chat({ oceanoMode }) {
     )
   }
 
-  const filteredContacts = mockContacts.filter(c =>
-    c.name.toLowerCase().includes(searchTerm.toLowerCase())
+  // Filtrar contatos REAIS (não mais mockados)
+  const filteredContacts = contacts.filter(c =>
+    c.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    c.username?.toLowerCase().includes(searchTerm.toLowerCase())
   )
 
   const chatMessages = selectedChat ? (messages[selectedChat.id] || []) : []

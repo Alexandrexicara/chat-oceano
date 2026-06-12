@@ -171,6 +171,57 @@ app.get('/api/users/:username', async (req, res) => {
   }
 });
 
+// Atualizar perfil do usuário (incluindo avatar)
+app.put('/api/users/:username', async (req, res) => {
+  const { username } = req.params;
+  const { name, bio, city, country, avatar } = req.body;
+  
+  try {
+    const updates = [];
+    const values = [];
+    let idx = 1;
+    
+    if (name !== undefined) {
+      updates.push(`name = $${idx++}`);
+      values.push(name);
+    }
+    if (bio !== undefined) {
+      updates.push(`bio = $${idx++}`);
+      values.push(bio);
+    }
+    if (city !== undefined) {
+      updates.push(`city = $${idx++}`);
+      values.push(city);
+    }
+    if (country !== undefined) {
+      updates.push(`country = $${idx++}`);
+      values.push(country);
+    }
+    if (avatar !== undefined) {
+      updates.push(`avatar = $${idx++}`);
+      values.push(avatar);
+    }
+    
+    if (updates.length === 0) {
+      return res.status(400).json({ error: 'Nenhum campo para atualizar' });
+    }
+    
+    values.push(username);
+    const result = await pool.query(
+      `UPDATE users SET ${updates.join(', ')} WHERE username = $${idx} RETURNING *`,
+      values
+    );
+    
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'Usuário não encontrado' });
+    }
+    
+    res.json(result.rows[0]);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
 // ===== MENSAGENS (GARRAFAS) =====
 
 // Enviar mensagem (garrafa)
@@ -223,60 +274,7 @@ app.get('/api/messages/:userId1/:userId2', async (req, res) => {
 
 // ===== CONTATOS =====
 
-// Buscar usuários por telefone (para sincronizar contatos WhatsApp)
-app.post('/api/users/find-by-phones', async (req, res) => {
-  const { phones } = req.body; // Array de telefones
-  try {
-    const result = await pool.query(
-      'SELECT id, name, username, phone, avatar, status FROM users WHERE phone = ANY($1)',
-      [phones]
-    );
-    res.json(result.rows);
-  } catch (error) {
-    res.status(500).json({ error: error.message });
-  }
-});
-
-// Enviar convite via WhatsApp (retorna link)
-app.post('/api/invite/whatsapp', async (req, res) => {
-  const { phone, inviterName } = req.body;
-  try {
-    // Gerar link de convite
-    const inviteLink = `https://oceanos.app/invite/${Date.now()}`;
-    const message = encodeURIComponent(
-      `🌊 Olá! ${inviterName} te convidou para o Oceanos - o mensageiro pirata!\n\n` +
-      `Entre agora e venha navegar conosco: ${inviteLink}\n\n` +
-      `🏴‍☠️ Baixe o app e cadastre-se!`
-    );
-    
-    // Link direto para WhatsApp
-    const whatsappLink = `https://wa.me/${phone}?text=${message}`;
-    
-    res.json({ 
-      success: true, 
-      whatsappLink,
-      message: 'Convite pronto para enviar!'
-    });
-  } catch (error) {
-    res.status(500).json({ error: error.message });
-  }
-});
-
-// Adicionar contato
-app.post('/api/contacts', async (req, res) => {
-  const { user_id, contact_id } = req.body;
-  try {
-    const result = await pool.query(
-      'INSERT INTO contacts (user_id, contact_id) VALUES ($1, $2) RETURNING *',
-      [user_id, contact_id]
-    );
-    res.status(201).json(result.rows[0]);
-  } catch (error) {
-    res.status(500).json({ error: error.message });
-  }
-});
-
-// Listar contatos de um usuário
+// Buscar contatos de um usuário
 app.get('/api/contacts/:userId', async (req, res) => {
   const { userId } = req.params;
   try {
@@ -299,6 +297,75 @@ app.get('/api/contacts/:userId', async (req, res) => {
     // Em caso de erro, retorna array vazio
     console.error('Erro ao buscar contatos:', error.message);
     res.json([]);
+  }
+});
+
+// Buscar usuários por telefone (para sincronizar contatos WhatsApp)
+app.post('/api/users/find-by-phones', async (req, res) => {
+  const { phones } = req.body; // Array de telefones
+  try {
+    if (!phones || !Array.isArray(phones) || phones.length === 0) {
+      return res.json([]);
+    }
+    
+    // Filtrar apenas números válidos (strings não vazias)
+    const validPhones = phones.filter(p => typeof p === 'string' && p.trim().length > 0);
+    
+    if (validPhones.length === 0) {
+      return res.json([]);
+    }
+    
+    // Buscar usuários por telefone - tratar erro de tipo
+    const result = await pool.query(
+      `SELECT id, name, username, phone, avatar, status 
+       FROM users 
+       WHERE phone = ANY($1::text[])`,
+      [validPhones]
+    );
+    res.json(result.rows);
+  } catch (error) {
+    console.error('Erro ao buscar usuários por telefone:', error.message);
+    console.error('Detalhes:', error.detail);
+    res.json([]);
+  }
+});
+
+// Adicionar contato
+app.post('/api/contacts', async (req, res) => {
+  const { user_id, contact_id } = req.body;
+  try {
+    const result = await pool.query(
+      'INSERT INTO contacts (user_id, contact_id) VALUES ($1, $2) RETURNING *',
+      [user_id, contact_id]
+    );
+    res.status(201).json(result.rows[0]);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Enviar convite via WhatsApp (retorna link)
+app.post('/api/invite/whatsapp', async (req, res) => {
+  const { phone, inviterName } = req.body;
+  try {
+    // Gerar link de convite
+    const inviteLink = `https://chat-oceano.onrender.com/invite/${Date.now()}`;
+    const message = encodeURIComponent(
+      `🌊 Olá! ${inviterName} te convidou para o Oceanos - o mensageiro pirata!\n\n` +
+      `Entre agora e venha navegar conosco: ${inviteLink}\n\n` +
+      `🏴‍☠️ Baixe o app e cadastre-se!`
+    );
+    
+    // Link direto para WhatsApp
+    const whatsappLink = `https://wa.me/${phone.replace(/\D/g, '')}?text=${message}`;
+    
+    res.json({ 
+      success: true, 
+      whatsappLink,
+      message: 'Convite pronto para enviar!'
+    });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
   }
 });
 

@@ -30,6 +30,12 @@ export const getUserByUsername = async (username) => {
   return response.data;
 };
 
+// Atualizar perfil do usuário
+export const updateUserProfile = async (username, profileData) => {
+  const response = await api.put(`/users/${username}`, profileData);
+  return response.data;
+};
+
 // Buscar usuários por telefones (WhatsApp)
 export const findUsersByPhones = async (phones) => {
   const response = await api.post('/users/find-by-phones', { phones });

@@ -2,16 +2,19 @@ import { useState } from 'react'
 import { useAuth } from '../context/AuthContext'
 import { Header, Container, Card, Button, Input, Badge } from '../components/BaseComponents'
 import { theme } from '../styles/theme'
+import { uploadFile } from '../services/api'
 
 export function Profile() {
   const { user, updateProfile, logout, contacts, addContact } = useAuth()
   const [editMode, setEditMode] = useState(false)
+  const [uploadingPhoto, setUploadingPhoto] = useState(false)
   const [formData, setFormData] = useState({
     name: user?.name || '',
     username: user?.username || '',
     bio: user?.bio || '',
     city: user?.city || '',
     country: user?.country || '',
+    avatar: user?.avatar || '',
   })
 
   const handleChange = (e) => {
@@ -25,11 +28,47 @@ export function Profile() {
     setEditMode(false)
   }
 
-  const mockUsers = [
-    { id: 1, name: 'João Silva', username: 'joao_silva', status: 'Online' },
-    { id: 2, name: 'Maria Santos', username: 'maria_santos', status: 'Online' },
-    { id: 3, name: 'Pedro Costa', username: 'pedro_costa', status: 'Offline' },
-  ]
+  // Upload de foto de perfil
+  const handlePhotoUpload = async (e) => {
+    const file = e.target.files[0]
+    if (!file) return
+
+    // Validar tipo de arquivo
+    if (!file.type.startsWith('image/')) {
+      alert('Por favor, selecione uma imagem.')
+      return
+    }
+
+    // Validar tamanho (max 5MB)
+    if (file.size > 5 * 1024 * 1024) {
+      alert('A imagem deve ter no máximo 5MB.')
+      return
+    }
+
+    setUploadingPhoto(true)
+    try {
+      const result = await uploadFile(file)
+      
+      if (result.filename) {
+        // Atualizar avatar no formData
+        const avatarUrl = `/uploads/${result.filename}`
+        setFormData(prev => ({ ...prev, avatar: avatarUrl }))
+        
+        // Atualizar perfil imediatamente
+        updateProfile({ avatar: avatarUrl })
+        
+        alert('✅ Foto de perfil atualizada com sucesso!')
+      }
+    } catch (error) {
+      console.error('Erro ao fazer upload:', error)
+      alert('Erro ao fazer upload da foto. Tente novamente.')
+    } finally {
+      setUploadingPhoto(false)
+    }
+  }
+
+  // Remover mock de usuários - tudo real agora
+  // Contatos reais vêm do WhatsApp Sync ou busca por telefone
 
   return (
     <div style={{ minHeight: '100vh', background: theme.colors.background, overflowY: 'auto', display: 'flex', flexDirection: 'column' }}>
@@ -45,21 +84,65 @@ export function Profile() {
           {/* Perfil */}
           <Card>
             <div style={{ textAlign: 'center' }}>
-              <div
-                style={{
-                  width: '100px',
-                  height: '100px',
-                  borderRadius: '50%',
-                  background: `linear-gradient(135deg, ${theme.colors.primary}, ${theme.colors.secondary})`,
-                  margin: '0 auto ' + theme.spacing.lg,
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  fontSize: '48px',
-                }}
-              >
-                👤
+              {/* Foto de perfil com upload */}
+              <div style={{ position: 'relative', display: 'inline-block' }}>
+                <div
+                  style={{
+                    width: '120px',
+                    height: '120px',
+                    borderRadius: '50%',
+                    background: user?.avatar 
+                      ? `url(${user.avatar}) center/cover no-repeat`
+                      : `linear-gradient(135deg, ${theme.colors.primary}, ${theme.colors.secondary})`,
+                    margin: '0 auto ' + theme.spacing.lg,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    fontSize: '48px',
+                    border: `4px solid ${theme.colors.secondary}`,
+                    boxShadow: '0 4px 12px rgba(0,0,0,0.2)',
+                  }}
+                >
+                  {!user?.avatar && '👤'}
+                </div>
+                
+                {/* Botão de upload */}
+                <label
+                  htmlFor="photo-upload"
+                  style={{
+                    position: 'absolute',
+                    bottom: '0',
+                    right: '0',
+                    width: '36px',
+                    height: '36px',
+                    borderRadius: '50%',
+                    background: theme.colors.primary,
+                    border: `2px solid ${theme.colors.surface}`,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    cursor: 'pointer',
+                    fontSize: '20px',
+                    boxShadow: '0 2px 8px rgba(0,0,0,0.3)',
+                  }}
+                >
+                  📷
+                  <input
+                    id="photo-upload"
+                    type="file"
+                    accept="image/*"
+                    onChange={handlePhotoUpload}
+                    style={{ display: 'none' }}
+                    disabled={uploadingPhoto}
+                  />
+                </label>
               </div>
+              
+              {uploadingPhoto && (
+                <p style={{ color: theme.colors.primary, marginBottom: theme.spacing.md }}>
+                  ⏳ Enviando foto...
+                </p>
+              )}
 
               {!editMode ? (
                 <>
@@ -161,11 +244,29 @@ export function Profile() {
             <h2 style={{ marginBottom: theme.spacing.lg }}>👥 Meus Contatos</h2>
 
             {contacts.length === 0 ? (
-              <p style={{ color: theme.colors.textSecondary, textAlign: 'center', marginBottom: theme.spacing.lg }}>
-                Nenhum contato adicionado ainda
-              </p>
+              <div style={{ 
+                textAlign: 'center', 
+                padding: theme.spacing.xl,
+                background: theme.colors.background,
+                borderRadius: theme.borderRadius.md,
+              }}>
+                <p style={{ fontSize: '48px', marginBottom: theme.spacing.md }}>📱</p>
+                <p style={{ color: theme.colors.textSecondary, marginBottom: theme.spacing.lg }}>
+                  Nenhum contato adicionado ainda
+                </p>
+                <p style={{ fontSize: theme.fonts.sizes.sm, color: theme.colors.textSecondary }}>
+                  Use o <strong>WhatsApp Sync</strong> no Chat para adicionar amigos!
+                </p>
+              </div>
             ) : (
               <div style={{ marginBottom: theme.spacing.lg }}>
+                <p style={{ 
+                  fontSize: theme.fonts.sizes.sm,
+                  color: theme.colors.textSecondary,
+                  marginBottom: theme.spacing.md,
+                }}>
+                  {contacts.length} contato(s) adicionado(s)
+                </p>
                 {contacts.map(contact => (
                   <div
                     key={contact.id}
@@ -179,50 +280,86 @@ export function Profile() {
                       alignItems: 'center',
                     }}
                   >
-                    <div>
-                      <p style={{ fontWeight: 'bold' }}>{contact.name}</p>
-                      <p style={{ fontSize: theme.fonts.sizes.sm, color: theme.colors.textSecondary }}>
-                        @{contact.username}
-                      </p>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: theme.spacing.md }}>
+                      <div style={{
+                        width: '40px',
+                        height: '40px',
+                        borderRadius: '50%',
+                        background: contact.avatar 
+                          ? `url(${contact.avatar}) center/cover`
+                          : 'linear-gradient(135deg, #4ade80, #25D366)',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        fontSize: '20px',
+                      }}>
+                        {!contact.avatar && '👤'}
+                      </div>
+                      <div>
+                        <p style={{ fontWeight: 'bold' }}>{contact.name}</p>
+                        <p style={{ fontSize: theme.fonts.sizes.sm, color: theme.colors.textSecondary }}>
+                          @{contact.username}
+                        </p>
+                      </div>
                     </div>
-                    <Badge variant="success">Online</Badge>
+                    <div style={{ display: 'flex', gap: theme.spacing.sm }}>
+                      <Badge variant="success">Online</Badge>
+                      <Button
+                        variant="secondary"
+                        onClick={() => {
+                          if (window.confirm(`Remover ${contact.name} dos contatos?`)) {
+                            // Implementar remoção de contato
+                            alert('Contato removido!')
+                          }
+                        }}
+                        style={{ 
+                          fontSize: theme.fonts.sizes.xs, 
+                          padding: '4px 8px',
+                        }}
+                      >
+                        ❌
+                      </Button>
+                    </div>
                   </div>
                 ))}
               </div>
             )}
 
-            <h3 style={{ marginBottom: theme.spacing.lg, marginTop: theme.spacing.xl }}>
-              Sugestões
-            </h3>
-
-            {mockUsers.map(sugUser => (
-              <div
-                key={sugUser.id}
-                style={{
-                  padding: theme.spacing.md,
-                  background: theme.colors.background,
-                  borderRadius: theme.borderRadius.md,
-                  marginBottom: theme.spacing.md,
-                  display: 'flex',
-                  justifyContent: 'space-between',
-                  alignItems: 'center',
-                }}
-              >
-                <div>
-                  <p style={{ fontWeight: 'bold' }}>{sugUser.name}</p>
-                  <p style={{ fontSize: theme.fonts.sizes.sm, color: theme.colors.textSecondary }}>
-                    @{sugUser.username}
-                  </p>
-                </div>
-                <Button
-                  variant="primary"
-                  onClick={() => addContact(sugUser)}
-                  style={{ fontSize: theme.fonts.sizes.sm, padding: theme.spacing.sm }}
-                >
-                  ➕ Adicionar
-                </Button>
-              </div>
-            ))}
+            {/* Informações sobre como adicionar contatos */}
+            <div style={{
+              marginTop: theme.spacing.xl,
+              padding: theme.spacing.lg,
+              background: 'rgba(74, 222, 128, 0.1)',
+              borderRadius: theme.borderRadius.md,
+              border: `2px solid ${theme.colors.success}`,
+            }}>
+              <h3 style={{ 
+                color: theme.colors.success, 
+                marginBottom: theme.spacing.md,
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px',
+              }}>
+                📲 Como adicionar amigos
+              </h3>
+              <p style={{ 
+                fontSize: theme.fonts.sizes.sm,
+                color: theme.colors.textSecondary,
+                marginBottom: theme.spacing.sm,
+              }}>
+                1. Abra o <strong>Chat</strong><br/>
+                2. Clique em <strong>"Sincronizar WhatsApp"</strong><br/>
+                3. Adicione números de telefone<br/>
+                4. Clique em <strong>"Sincronizar"</strong>
+              </p>
+              <p style={{ 
+                fontSize: theme.fonts.sizes.xs,
+                color: theme.colors.textSecondary,
+                fontStyle: 'italic',
+              }}>
+                💡 Seus amigos serão adicionados automaticamente quando eles entrarem no Oceanos!
+              </p>
+            </div>
           </Card>
         </div>
       </Container>
