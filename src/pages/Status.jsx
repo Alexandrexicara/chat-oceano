@@ -9,6 +9,7 @@ export function Status() {
   const { user, logout } = useAuth()
   const [mode, setMode] = useState('view') // view ou create
   const [statusForm, setStatusForm] = useState({ text: '', mediaUrl: '', mediaType: '' })
+  const [selectedStatus, setSelectedStatus] = useState(null) // Status selecionado para abrir
   const [statuses, setStatuses] = useState([
     {
       id: 1,
@@ -281,14 +282,30 @@ export function Status() {
                     >
                       {status.type === 'video' ? (
                         <>
-                          <BarrelIcon isOwn={status.author === user?.name} />
+                          <div 
+                            onClick={() => {
+                              setSelectedStatus(status)
+                              playBottleSound()
+                            }}
+                            style={{ cursor: 'pointer' }}
+                          >
+                            <BarrelIcon isOwn={status.author === user?.name} />
+                          </div>
                           <p style={{ fontSize: theme.fonts.sizes.sm, textAlign: 'center', marginTop: '8px' }}>
                             🛢️ {status.content || 'Vídeo no barril'}
                           </p>
                         </>
                       ) : status.mediaType === 'audio' ? (
                         <>
-                          <BottleIcon isOwn={status.author === user?.name} />
+                          <div 
+                            onClick={() => {
+                              setSelectedStatus(status)
+                              playBottleSound()
+                            }}
+                            style={{ cursor: 'pointer' }}
+                          >
+                            <BottleIcon isOwn={status.author === user?.name} />
+                          </div>
                           <p style={{ fontSize: theme.fonts.sizes.sm, textAlign: 'center', marginTop: '8px' }}>
                             🍾 🎤 Áudio na garrafa
                           </p>
@@ -300,7 +317,15 @@ export function Status() {
                         </>
                       ) : (
                         <>
-                          <BottleIcon isOwn={status.author === user?.name} />
+                          <div 
+                            onClick={() => {
+                              setSelectedStatus(status)
+                              playBottleSound()
+                            }}
+                            style={{ cursor: 'pointer' }}
+                          >
+                            <BottleIcon isOwn={status.author === user?.name} />
+                          </div>
                           <p style={{ fontSize: theme.fonts.sizes.md, textAlign: 'center', marginTop: '8px' }}>
                             🍾 {status.content}
                           </p>
@@ -392,6 +417,139 @@ export function Status() {
           </Card>
         )}
       </Container>
+
+      {/* Modal de Status - Abre garrafa/barril ao clicar */}
+      {selectedStatus && (
+        <div
+          style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            background: 'rgba(0,0,0,0.85)',
+            zIndex: 9999,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            padding: '20px',
+          }}
+          onClick={() => setSelectedStatus(null)}
+        >
+          <div
+            style={{
+              background: theme.colors.background,
+              borderRadius: theme.borderRadius.lg,
+              maxWidth: '600px',
+              width: '100%',
+              maxHeight: '80vh',
+              overflowY: 'auto',
+              padding: theme.spacing.lg,
+              position: 'relative',
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Botão de fechar */}
+            <button
+              onClick={() => setSelectedStatus(null)}
+              style={{
+                position: 'absolute',
+                top: '12px',
+                right: '12px',
+                background: 'rgba(255,255,255,0.1)',
+                border: 'none',
+                borderRadius: '50%',
+                width: '36px',
+                height: '36px',
+                cursor: 'pointer',
+                fontSize: '18px',
+                color: theme.colors.text,
+              }}
+            >
+              ✕
+            </button>
+
+            {/* Header do status */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '16px' }}>
+              <div style={{ fontSize: '32px' }}>{selectedStatus.avatar}</div>
+              <div>
+                <h3 style={{ margin: 0, color: theme.colors.text }}>{selectedStatus.author}</h3>
+                <p style={{ margin: 0, fontSize: theme.fonts.sizes.sm, color: theme.colors.textSecondary }}>
+                  {selectedStatus.timestamp}
+                </p>
+              </div>
+            </div>
+
+            {/* Conteúdo */}
+            <div style={{ marginBottom: '16px' }}>
+              {selectedStatus.type === 'video' ? (
+                <>
+                  <div style={{ textAlign: 'center', marginBottom: '16px' }}>
+                    <BarrelIcon isOwn={selectedStatus.author === user?.name} />
+                  </div>
+                  {selectedStatus.mediaUrl ? (
+                    <video controls style={{ width: '100%', borderRadius: theme.borderRadius.md }}>
+                      <source src={selectedStatus.mediaUrl} />
+                    </video>
+                  ) : (
+                    <p style={{ textAlign: 'center', color: theme.colors.textSecondary }}>
+                      🛢️ {selectedStatus.content || 'Vídeo no barril'}
+                    </p>
+                  )}
+                </>
+              ) : selectedStatus.mediaType === 'audio' ? (
+                <>
+                  <div style={{ textAlign: 'center', marginBottom: '16px' }}>
+                    <BottleIcon isOwn={selectedStatus.author === user?.name} />
+                  </div>
+                  {selectedStatus.mediaUrl && (
+                    <audio controls style={{ width: '100%' }}>
+                      <source src={selectedStatus.mediaUrl} />
+                    </audio>
+                  )}
+                </>
+              ) : selectedStatus.mediaType === 'image' ? (
+                <>
+                  <div style={{ textAlign: 'center', marginBottom: '16px' }}>
+                    <BottleIcon isOwn={selectedStatus.author === user?.name} />
+                  </div>
+                  <img 
+                    src={selectedStatus.mediaUrl} 
+                    alt={selectedStatus.content}
+                    style={{ width: '100%', borderRadius: theme.borderRadius.md }}
+                  />
+                  {selectedStatus.content && (
+                    <p style={{ marginTop: '12px', color: theme.colors.text }}>
+                      🍾 {selectedStatus.content}
+                    </p>
+                  )}
+                </>
+              ) : (
+                <>
+                  <div style={{ textAlign: 'center', marginBottom: '16px' }}>
+                    <BottleIcon isOwn={selectedStatus.author === user?.name} />
+                  </div>
+                  <p style={{ textAlign: 'center', fontSize: theme.fonts.sizes.lg, color: theme.colors.text }}>
+                    🍾 {selectedStatus.content}
+                  </p>
+                </>
+              )}
+            </div>
+
+            {/* Rodapé */}
+            <div style={{ display: 'flex', gap: theme.spacing.sm, alignItems: 'center' }}>
+              <Badge variant="success">👁️ {selectedStatus.views} visualizações</Badge>
+              <Button
+                variant="secondary"
+                style={{ flex: 1 }}
+                onClick={() => handleLike(selectedStatus.id)}
+              >
+                {selectedStatus.liked ? '❤️ Curtido' : '🤍 Curtir'} {selectedStatus.likes > 0 ? selectedStatus.likes : ''}
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

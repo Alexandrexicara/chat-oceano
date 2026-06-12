@@ -1179,34 +1179,6 @@ export function Chat({ oceanoMode }) {
     }}>
       {/* Área das garrafas */}
       <div style={{ flex: 1, position: 'relative', overflow: 'auto' }}>
-        {/* Título do Oceano */}
-        <div style={{
-          position: 'absolute',
-          top: '20px',
-          left: '50%',
-          transform: 'translateX(-50%)',
-          zIndex: 10,
-          textAlign: 'center',
-          pointerEvents: 'none',
-        }}>
-          <h2 style={{
-            color: theme.colors.primary,
-            fontSize: theme.fonts.sizes.xxl,
-            textShadow: '0 2px 8px rgba(0,0,0,0.5)',
-            margin: 0,
-          }}>
-            🌊 Oceano Coletivo
-          </h2>
-          <p style={{
-            color: theme.colors.textSecondary,
-            fontSize: theme.fonts.sizes.sm,
-            margin: '4px 0 0 0',
-            textShadow: '0 1px 4px rgba(0,0,0,0.5)',
-          }}>
-            Garrafas e barris flutuando... clique para abrir!
-          </p>
-        </div>
-
         {/* Ondas decorativas */}
         <div style={{
           position: 'absolute', bottom: 0, left: 0, right: 0, height: '80px',
