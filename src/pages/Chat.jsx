@@ -1165,7 +1165,7 @@ export function Chat({ oceanoMode }) {
   const OceanView = ({ bottles, showInput }) => (
     <div style={{
       flex: 1,
-      minHeight: 0,
+      minHeight: '400px',
       display: 'flex',
       flexDirection: 'column',
       position: 'relative',
@@ -1179,6 +1179,34 @@ export function Chat({ oceanoMode }) {
     }}>
       {/* Área das garrafas */}
       <div style={{ flex: 1, position: 'relative', overflow: 'auto' }}>
+        {/* Título do Oceano */}
+        <div style={{
+          position: 'absolute',
+          top: '20px',
+          left: '50%',
+          transform: 'translateX(-50%)',
+          zIndex: 10,
+          textAlign: 'center',
+          pointerEvents: 'none',
+        }}>
+          <h2 style={{
+            color: theme.colors.primary,
+            fontSize: theme.fonts.sizes.xxl,
+            textShadow: '0 2px 8px rgba(0,0,0,0.5)',
+            margin: 0,
+          }}>
+            🌊 Oceano Coletivo
+          </h2>
+          <p style={{
+            color: theme.colors.textSecondary,
+            fontSize: theme.fonts.sizes.sm,
+            margin: '4px 0 0 0',
+            textShadow: '0 1px 4px rgba(0,0,0,0.5)',
+          }}>
+            Garrafas e barris flutuando... clique para abrir!
+          </p>
+        </div>
+
         {/* Ondas decorativas */}
         <div style={{
           position: 'absolute', bottom: 0, left: 0, right: 0, height: '80px',
@@ -1267,11 +1295,32 @@ export function Chat({ oceanoMode }) {
       <div style={{ height: 'calc(100vh - 60px)', background: theme.colors.background, display: 'flex', flexDirection: 'column' }}>
         <Header>
           <h1 style={{ fontSize: theme.fonts.sizes.xl }}>🌊 Oceano Coletivo</h1>
-          <Button variant="secondary" onClick={logout}>Sair</Button>
+          <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+            <CDCoinDisplay 
+              saldo={saldo} 
+              onConvertClick={() => alert('Em breve: tela de conversão de CDCOIN!')}
+            />
+            <Button variant="secondary" onClick={logout}>Sair</Button>
+          </div>
         </Header>
         <OceanView bottles={oceanoBottles} showInput />
+        
+        {/* Mini-anuncio no Oceano */}
+        {showMiniAnuncio && (
+          <MiniAnuncio onClose={() => {
+            setShowMiniAnuncio(false)
+            pontuar.anuncioAssistido()
+          }} />
+        )}
+        
         {selectedBottle && (
-          <BottleModal message={selectedBottle} onClose={() => setSelectedBottle(null)} />
+          <BottleModal message={selectedBottle} onClose={() => {
+            setSelectedBottle(null)
+            // Pontuar ao fechar modal
+            if (selectedBottle.mediaType === 'video') {
+              pontuar.oceanoParticipou()
+            }
+          }} />
         )}
       </div>
     )
