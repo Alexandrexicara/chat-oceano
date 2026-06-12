@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect, useMemo } from 'react'
 import { useAuth } from '../context/AuthContext'
 import { Header, Button, Input, Badge } from '../components/BaseComponents'
+import { WhatsAppSync } from '../components/WhatsAppSync'
 import { theme } from '../styles/theme'
 import { playMessageSound, playBottleSound } from '../utils/sounds'
 import { getMessages, sendMessage as sendApiMessage, getOceanoMessages, getContacts } from '../services/api'
@@ -707,6 +708,7 @@ export function Chat({ oceanoMode }) {
     },
   ])
   const [loading, setLoading] = useState(true)
+  const [showWhatsAppSync, setShowWhatsAppSync] = useState(false)
   const messagesEndRef = useRef(null)
   const fileInputRef = useRef(null)
   const audioInputRef = useRef(null)
@@ -1240,10 +1242,24 @@ export function Chat({ oceanoMode }) {
     <div style={{ minHeight: '100vh', background: theme.colors.background }}>
       <Header>
         <h1 style={{ fontSize: theme.fonts.sizes.xl }}>💬 Chat • Garrafas no Mar</h1>
-        <Button variant="secondary" onClick={logout}>
-          Sair
-        </Button>
+        <div style={{ display: 'flex', gap: '8px' }}>
+          <Button 
+            variant="primary" 
+            onClick={() => setShowWhatsAppSync(true)}
+            title="Sincronizar contatos do WhatsApp"
+          >
+            📱 WhatsApp
+          </Button>
+          <Button variant="secondary" onClick={logout}>
+            Sair
+          </Button>
+        </div>
       </Header>
+
+      {/* Modal de sincronização WhatsApp */}
+      {showWhatsAppSync && (
+        <WhatsAppSync onClose={() => setShowWhatsAppSync(false)} />
+      )}
 
       <div className={`chat-container ${selectedChat && !showContactsOnMobile ? 'chat-active' : ''}`} style={{ display: 'flex', height: 'calc(100vh - 70px - 60px)', overflow: 'hidden' }}>
         {/* Lista de Contatos */}

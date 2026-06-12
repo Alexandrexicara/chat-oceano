@@ -29,6 +29,7 @@ export function Auth() {
         username: formData.username,
         email: formData.email,
         password: formData.password,
+        phone: formData.phone, // Enviar telefone
       })
     }
   }

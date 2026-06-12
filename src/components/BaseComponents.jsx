@@ -95,7 +95,7 @@ export function Button({ children, variant = 'primary', ...props }) {
   )
 }
 
-export function Input({ label, ...props }) {
+export function Input({ label, helperText, ...props }) {
   return (
     <div style={{ marginBottom: theme.spacing.lg }}>
       {label && (
@@ -115,6 +115,16 @@ export function Input({ label, ...props }) {
         }}
         {...props}
       />
+      {helperText && (
+        <p style={{ 
+          fontSize: theme.fonts.sizes.sm, 
+          color: theme.colors.textSecondary, 
+          marginTop: theme.spacing.xs,
+          opacity: 0.7
+        }}>
+          {helperText}
+        </p>
+      )}
     </div>
   )
 }
