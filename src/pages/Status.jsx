@@ -7,6 +7,7 @@ import { playBottleSound } from '../utils/sounds'
 import { MiniAnuncio } from '../components/MiniAnuncio'
 import { ExoclickAd } from '../components/ExoclickAd'
 import { TestExoclickAd } from '../components/TestExoclickAd'
+import { getOceanoMessages, sendMessage as sendApiMessage } from '../services/api'
 
 export function Status() {
   const { user, logout } = useAuth()
@@ -14,56 +15,88 @@ export function Status() {
   const [statusForm, setStatusForm] = useState({ text: '', mediaUrl: '', mediaType: '' })
   const [selectedStatus, setSelectedStatus] = useState(null) // Status selecionado para abrir
   const [showAnuncio, setShowAnuncio] = useState(false) // Controla exibição de anúncio
-  const [statuses, setStatuses] = useState([
-    {
-      id: 1,
-      author: 'João Silva',
-      avatar: '👤',
-      content: 'Que dia lindo! 🌞',
-      type: 'text',
-      timestamp: '2 minutos atrás',
-      views: 15,
-      likes: 3,
-      liked: false,
-    },
-    {
-      id: 2,
-      author: 'Maria Santos',
-      avatar: '👩',
-      content: 'Viajando para a praia! 🏖️',
-      type: 'text',
-      timestamp: '1 hora atrás',
-      views: 32,
-      likes: 8,
-      liked: false,
-    },
-  ])
+  const [statuses, setStatuses] = useState([]) // REMOVIDO: dados mockados - agora vem do banco
+  const [loading, setLoading] = useState(true)
 
-  const handleCreateStatus = (e) => {
+  // Carregar status REAIS do banco de dados
+  useEffect(() => {
+    const loadStatuses = async () => {
+      try {
+        // Buscar mensagens do oceano (is_oceano = true)
+        const oceanoMessages = await getOceanoMessages()
+        
+        // Transformar em formato de status
+        const realStatuses = oceanoMessages.map(msg => ({
+          id: msg.id,
+          author: msg.sender_name || 'Usuário',
+          avatar: msg.sender_avatar || '👤',
+          content: msg.text,
+          type: msg.media_type === 'video' ? 'video' : 'text',
+          mediaUrl: msg.media_url,
+          mediaType: msg.media_type,
+          timestamp: new Date(msg.created_at).toLocaleString('pt-BR', { 
+            day: '2-digit', 
+            month: '2-digit',
+            hour: '2-digit', 
+            minute: '2-digit' 
+          }),
+          views: msg.views || 0,
+          likes: msg.likes || 0,
+          liked: false,
+          sender_id: msg.sender_id,
+        }))
+        
+        setStatuses(realStatuses)
+        setLoading(false)
+      } catch (error) {
+        console.error('❌ Erro ao carregar status:', error)
+        setLoading(false)
+      }
+    }
+
+    loadStatuses()
+  }, [])
+
+  const handleCreateStatus = async (e) => {
     e.preventDefault()
     if (!statusForm.text.trim() && !statusForm.mediaUrl) return
 
-    // Determinar tipo: video = barril, texto/audio = garrafa
-    const statusType = statusForm.mediaType === 'video' ? 'video' : 'text'
+    try {
+      // Enviar status REAL para o banco de dados
+      const newMessage = await sendApiMessage({
+        sender_id: user?.id,
+        text: statusForm.text,
+        media_url: statusForm.mediaUrl,
+        media_type: statusForm.mediaType,
+        is_oceano: true, // Status é público (oceano)
+      })
 
-    const newStatus = {
-      id: Date.now(),
-      author: user?.name || 'Você',
-      avatar: '👤',
-      content: statusForm.text,
-      type: statusType,
-      mediaUrl: statusForm.mediaUrl,
-      mediaType: statusForm.mediaType,
-      timestamp: 'agora',
-      views: 0,
-      likes: 0,
-      liked: false,
+      // Adicionar ao estado local
+      const newStatus = {
+        id: newMessage.id,
+        author: user?.name || 'Você',
+        avatar: user?.avatar || '👤',
+        content: statusForm.text,
+        type: statusForm.mediaType === 'video' ? 'video' : 'text',
+        mediaUrl: statusForm.mediaUrl,
+        mediaType: statusForm.mediaType,
+        timestamp: 'agora',
+        views: 0,
+        likes: 0,
+        liked: false,
+        sender_id: user?.id,
+      }
+
+      setStatuses([newStatus, ...statuses])
+      setStatusForm({ text: '', mediaUrl: '', mediaType: '' })
+      setMode('view')
+      playBottleSound()
+      
+      alert('✅ Status publicado com sucesso!')
+    } catch (error) {
+      console.error('❌ Erro ao criar status:', error)
+      alert('Erro ao publicar status. Tente novamente.')
     }
-
-    setStatuses([newStatus, ...statuses])
-    setStatusForm({ text: '', mediaUrl: '', mediaType: '' })
-    setMode('view')
-    playBottleSound()
   }
 
   const handleLike = (statusId) => {
@@ -207,7 +240,12 @@ export function Status() {
       </Header>
 
       <Container style={{ flex: 1, overflowY: 'auto', maxHeight: 'calc(100vh - 70px)' }}>
-        {mode === 'view' ? (
+        {loading ? (
+          <div style={{ textAlign: 'center', padding: theme.spacing.xl }}>
+            <p style={{ fontSize: '48px', marginBottom: theme.spacing.md }}>⏳</p>
+            <p style={{ color: theme.colors.textSecondary }}>Carregando status...</p>
+          </div>
+        ) : mode === 'view' ? (
           <>
             <div style={{ marginBottom: theme.spacing.xl }}>
               <Button
@@ -226,7 +264,24 @@ export function Status() {
                 gap: theme.spacing.lg,
               }}
             >
-              {statuses.map((status, idx) => (
+              {statuses.length === 0 ? (
+                <div style={{ 
+                  gridColumn: '1 / -1',
+                  textAlign: 'center', 
+                  padding: theme.spacing.xl,
+                  background: theme.colors.surface,
+                  borderRadius: theme.borderRadius.md,
+                }}>
+                  <p style={{ fontSize: '48px', marginBottom: theme.spacing.md }}>🌊</p>
+                  <p style={{ fontSize: theme.fonts.sizes.lg, marginBottom: theme.spacing.sm }}>
+                    <strong>Nenhum status publicado ainda</strong>
+                  </p>
+                  <p style={{ color: theme.colors.textSecondary }}>
+                    Seja o primeiro a postar! Clique em "Criar Novo Status" acima.
+                  </p>
+                </div>
+              ) : (
+                statuses.map((status, idx) => (
                 <div
                   key={status.id}
                   style={{
@@ -345,7 +400,8 @@ export function Status() {
                     </div>
                   </Card>
                 </div>
-              ))}
+              ))
+              )}
             </div>
 
             <style>{`

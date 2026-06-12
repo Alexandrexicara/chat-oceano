@@ -2,12 +2,12 @@
 
 ## 🎯 Confirmação: TODOS os Dados Mockados Foram Removidos!
 
-### 📊 Status Atual:
+### 📊 Status Atual (ATUALIZADO):
 
 | Componente | Status | Fonte de Dados |
 |---|---|---|
 | **Chat** | ✅ REAL | PostgreSQL via API |
-| **Status** | ✅ REAL | PostgreSQL via API |
+| **Status** | ✅ REAL | PostgreSQL (Mensagens do Oceano) |
 | **Profile** | ✅ REAL | PostgreSQL + Upload de Fotos |
 | **Contatos** | ✅ REAL | WhatsApp Sync + Banco de Dados |
 | **Oceano** | ✅ REAL | Mensagens do PostgreSQL |
@@ -29,13 +29,23 @@
 
 ### Status.jsx
 - ❌ Player de áudio visível antes de abrir garrafa
+- ❌ 2 status simulados iniciais (João Silva e Maria Santos)
 - ❌ Dados simulados de status
 
 ---
 
 ## ✅ O que é REAL agora:
 
-### 1. **Contatos**
+### 1. **Status (NOVO!)**
+```javascript
+// Vêm do banco de dados PostgreSQL
+GET /api/messages/oceano
+→ Retorna mensagens públicas (is_oceano = true)
+→ Exibe como status no feed
+→ Salvas permanentemente no banco
+```
+
+### 2. **Contatos**
 ```javascript
 // Vêm do banco de dados PostgreSQL
 GET /api/contacts/:userId
@@ -43,7 +53,7 @@ GET /api/contacts/:userId
 → Integrado com WhatsApp Sync
 ```
 
-### 2. **Mensagens**
+### 3. **Mensagens**
 ```javascript
 // Vêm do banco de dados PostgreSQL
 GET /api/messages/:userId1/:userId2
@@ -51,7 +61,7 @@ GET /api/messages/:userId1/:userId2
 → Salvas permanentemente no banco
 ```
 
-### 3. **Oceano (Mensagens Públicas)**
+### 4. **Oceano (Mensagens Públicas)**
 ```javascript
 // Vêm do banco de dados PostgreSQL
 GET /api/messages/oceano
@@ -59,7 +69,7 @@ GET /api/messages/oceano
 → De todos os usuários do sistema
 ```
 
-### 4. **Profile**
+### 5. **Profile**
 ```javascript
 // Upload real de fotos
 POST /api/upload
@@ -68,7 +78,7 @@ PUT /api/users/:username
 → Atualiza avatar no banco de dados
 ```
 
-### 5. **Anúncios Exoclick**
+### 6. **Anúncios Exoclick**
 ```javascript
 // Anúncios REAIS do Exoclick
 Zone ID: 5948380
