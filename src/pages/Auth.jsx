@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { useAuth } from '../context/AuthContext'
 import { Container, Card, Button, Input } from '../components/BaseComponents'
 import { OceanosTutorial } from '../components/OceanosTutorial'
+import { AuthDecorations } from '../components/AuthDecorations'
 import { useCDCoin } from '../hooks/useCDCoin'
 import { theme } from '../styles/theme'
 
@@ -50,9 +51,13 @@ export function Auth() {
         alignItems: 'center',
         justifyContent: 'center',
         overflowY: 'auto',
+        position: 'relative',
       }}
     >
-      <Container style={{ maxWidth: '400px', width: '100%' }}>
+      {/* Decorações animadas */}
+      <AuthDecorations />
+
+      <Container style={{ maxWidth: '400px', width: '100%', position: 'relative', zIndex: 1 }}>
         <Card>
           <div style={{ textAlign: 'center', marginBottom: theme.spacing.xl }}>
             <h1 style={{ fontSize: theme.fonts.sizes.xxl, marginBottom: theme.spacing.md }}>
