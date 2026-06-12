@@ -1246,7 +1246,7 @@ export function Chat({ oceanoMode }) {
   return (
     <div style={{ minHeight: '100vh', background: theme.colors.background }}>
       <Header>
-        <h1 style={{ fontSize: theme.fonts.sizes.xl }}>💬 Chat • Garrafas no Mar</h1>
+        <h1 style={{ fontSize: theme.fonts.sizes.xl }}>💬 Chat</h1>
         <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
           {/* Exibir CDCOIN */}
           <CDCoinDisplay 

@@ -7,7 +7,7 @@ import { playBottleSound } from '../utils/sounds'
 import { MiniAnuncio } from '../components/MiniAnuncio'
 import { ExoclickAd } from '../components/ExoclickAd'
 import { TestExoclickAd } from '../components/TestExoclickAd'
-import { getOceanoMessages, sendMessage as sendApiMessage } from '../services/api'
+import { getOceanoMessages, sendMessage as sendApiMessage, uploadFile } from '../services/api'
 
 export function Status() {
   const { user, logout } = useAuth()
@@ -62,11 +62,37 @@ export function Status() {
     if (!statusForm.text.trim() && !statusForm.mediaUrl) return
 
     try {
+      let mediaUrlFinal = statusForm.mediaUrl
+      
+      // Se tem mídia gravada (blob), fazer upload para o servidor
+      if (statusForm.mediaUrl && statusForm.mediaUrl.startsWith('blob:')) {
+        try {
+          // Converter blob URL para File
+          const response = await fetch(statusForm.mediaUrl)
+          const blob = await response.blob()
+          
+          // Criar arquivo
+          const extension = statusForm.mediaType === 'video' ? 'webm' : 'webm'
+          const fileName = `status_${user?.id}_${Date.now()}.${extension}`
+          const file = new File([blob], fileName, { type: blob.type })
+          
+          // Upload do arquivo
+          const uploadResult = await uploadFile(file)
+          if (uploadResult.filename) {
+            mediaUrlFinal = `/uploads/${uploadResult.filename}`
+            console.log('✅ Mídia enviada para o servidor:', mediaUrlFinal)
+          }
+        } catch (error) {
+          console.error('❌ Erro ao fazer upload da mídia:', error)
+          // Continua mesmo sem upload - usa URL temporária
+        }
+      }
+      
       // Enviar status REAL para o banco de dados
       const newMessage = await sendApiMessage({
         sender_id: user?.id,
         text: statusForm.text,
-        media_url: statusForm.mediaUrl,
+        media_url: mediaUrlFinal,
         media_type: statusForm.mediaType,
         is_oceano: true, // Status é público (oceano)
       })
@@ -78,7 +104,7 @@ export function Status() {
         avatar: user?.avatar || '👤',
         content: statusForm.text,
         type: statusForm.mediaType === 'video' ? 'video' : 'text',
-        mediaUrl: statusForm.mediaUrl,
+        mediaUrl: mediaUrlFinal,
         mediaType: statusForm.mediaType,
         timestamp: 'agora',
         views: 0,
@@ -112,7 +138,9 @@ export function Status() {
     }))
   }
 
-  const handleAudioRecording = (audioUrl) => {
+  const handleAudioRecording = async (audioData) => {
+    // audioData = { url, blob, type }
+    const audioUrl = audioData.url || audioData
     setStatusForm({
       ...statusForm,
       mediaUrl: audioUrl,
@@ -120,7 +148,9 @@ export function Status() {
     })
   }
 
-  const handleVideoRecording = (videoUrl) => {
+  const handleVideoRecording = async (videoData) => {
+    // videoData = { url, blob, type }
+    const videoUrl = videoData.url || videoData
     setStatusForm({
       ...statusForm,
       mediaUrl: videoUrl,
@@ -313,9 +343,22 @@ export function Status() {
                           alignItems: 'center',
                           justifyContent: 'center',
                           fontSize: '20px',
+                          overflow: 'hidden',
                         }}
                       >
-                        {status.avatar}
+                        {status.avatar && (status.avatar.startsWith('http') || status.avatar.startsWith('/')) ? (
+                          <img 
+                            src={status.avatar} 
+                            alt={status.author}
+                            style={{
+                              width: '100%',
+                              height: '100%',
+                              objectFit: 'cover',
+                            }}
+                          />
+                        ) : (
+                          <span>{status.avatar || '👤'}</span>
+                        )}
                       </div>
                       <div>
                         <p style={{ fontWeight: 'bold' }}>{status.author}</p>
@@ -560,7 +603,31 @@ export function Status() {
 
             {/* Header do status */}
             <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '16px' }}>
-              <div style={{ fontSize: '32px' }}>{selectedStatus.avatar}</div>
+              <div style={{ 
+                width: '40px',
+                height: '40px',
+                borderRadius: '50%',
+                background: theme.colors.background,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                fontSize: '20px',
+                overflow: 'hidden',
+              }}>
+                {selectedStatus.avatar && (selectedStatus.avatar.startsWith('http') || selectedStatus.avatar.startsWith('/')) ? (
+                  <img 
+                    src={selectedStatus.avatar} 
+                    alt={selectedStatus.author}
+                    style={{
+                      width: '100%',
+                      height: '100%',
+                      objectFit: 'cover',
+                    }}
+                  />
+                ) : (
+                  <span>{selectedStatus.avatar || '👤'}</span>
+                )}
+              </div>
               <div>
                 <h3 style={{ margin: 0, color: theme.colors.text }}>{selectedStatus.author}</h3>
                 <p style={{ margin: 0, fontSize: theme.fonts.sizes.sm, color: theme.colors.textSecondary }}>
