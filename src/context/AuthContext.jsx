@@ -23,12 +23,19 @@ export function AuthProvider({ children }) {
       // Registrar no backend
       const backendUser = await loginUser({
         username: userData.username,
-        name: userData.name
+        name: userData.name,
+        phone: userData.phone,
+        city: userData.city,
+        country: userData.country,
+        language: userData.language,
       })
       
       const newUser = {
         ...backendUser,
-        phone: userData.phone, // Salvar telefone
+        phone: userData.phone,
+        city: userData.city,
+        country: userData.country,
+        language: userData.language,
         createdAt: backendUser.created_at || new Date().toISOString(),
         followers: 0,
         statusCount: 0,
@@ -44,7 +51,10 @@ export function AuthProvider({ children }) {
       const newUser = {
         id: Date.now(),
         ...userData,
-        phone: userData.phone, // Salvar telefone
+        phone: userData.phone,
+        city: userData.city,
+        country: userData.country,
+        language: userData.language,
         createdAt: new Date().toISOString(),
         followers: 0,
         statusCount: 0,

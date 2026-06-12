@@ -94,23 +94,47 @@ app.post('/api/upload', upload.single('file'), (req, res) => {
 
 // Login ou criar usuário
 app.post('/api/auth/login', async (req, res) => {
-  const { username, name, phone } = req.body;
+  const { username, name, phone, city, country, language } = req.body;
   try {
     // Tentar encontrar usuário
     let result = await pool.query('SELECT * FROM users WHERE username = $1', [username]);
     
     if (result.rows.length === 0) {
-      // Criar novo usuário com telefone
+      // Criar novo usuário com todos os campos
       result = await pool.query(
-        'INSERT INTO users (name, username, phone, bio) VALUES ($1, $2, $3, $4) RETURNING *',
-        [name || username, username, phone || null, 'Novo no Oceanos 🌊']
+        'INSERT INTO users (name, username, phone, bio, city, country, language) VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING *',
+        [name || username, username, phone || null, 'Novo no Oceanos 🌊', city || null, country || 'BR', language || 'pt-BR']
       );
-    } else if (phone && !result.rows[0].phone) {
-      // Atualizar telefone se não tiver
-      await pool.query(
-        'UPDATE users SET phone = $1 WHERE username = $2',
-        [phone, username]
-      );
+    } else {
+      // Atualizar campos se não tiver
+      const updates = [];
+      const values = [];
+      let idx = 1;
+      
+      if (phone && !result.rows[0].phone) {
+        updates.push(`phone = $${idx++}`);
+        values.push(phone);
+      }
+      if (city && !result.rows[0].city) {
+        updates.push(`city = $${idx++}`);
+        values.push(city);
+      }
+      if (country && !result.rows[0].country) {
+        updates.push(`country = $${idx++}`);
+        values.push(country);
+      }
+      if (language && !result.rows[0].language) {
+        updates.push(`language = $${idx++}`);
+        values.push(language);
+      }
+      
+      if (updates.length > 0) {
+        values.push(username);
+        await pool.query(
+          `UPDATE users SET ${updates.join(', ')} WHERE username = $${idx}`,
+          values
+        );
+      }
     }
     
     res.json(result.rows[0]);
@@ -121,11 +145,11 @@ app.post('/api/auth/login', async (req, res) => {
 
 // Criar usuário
 app.post('/api/users', async (req, res) => {
-  const { name, username, phone, bio, city, country } = req.body;
+  const { name, username, phone, bio, city, country, language } = req.body;
   try {
     const result = await pool.query(
-      'INSERT INTO users (name, username, phone, bio, city, country) VALUES ($1, $2, $3, $4, $5, $6) RETURNING *',
-      [name, username, phone, bio, city, country]
+      'INSERT INTO users (name, username, phone, bio, city, country, language) VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING *',
+      [name, username, phone, bio, city, country, language || 'pt-BR']
     );
     res.status(201).json(result.rows[0]);
   } catch (error) {
@@ -329,14 +353,20 @@ async function initializeDatabase() {
         id SERIAL PRIMARY KEY,
         name VARCHAR(100) NOT NULL,
         username VARCHAR(50) UNIQUE NOT NULL,
-        phone VARCHAR(20), -- Número de telefone para WhatsApp
+        phone VARCHAR(30),
         bio TEXT,
         city VARCHAR(100),
-        country VARCHAR(100),
+        country VARCHAR(10),
+        language VARCHAR(10) DEFAULT 'pt-BR',
         avatar VARCHAR(255),
         status VARCHAR(20) DEFAULT 'Online',
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       );
+
+      -- Adicionar coluna language se não existir (para bancos antigos)
+      ALTER TABLE users ADD COLUMN IF NOT EXISTS language VARCHAR(10) DEFAULT 'pt-BR';
+      ALTER TABLE users ALTER COLUMN phone TYPE VARCHAR(30);
+      ALTER TABLE users ALTER COLUMN country TYPE VARCHAR(10);
 
       CREATE TABLE IF NOT EXISTS messages (
         id SERIAL PRIMARY KEY,

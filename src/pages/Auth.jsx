@@ -5,6 +5,7 @@ import { OceanosTutorial } from '../components/OceanosTutorial'
 import { AuthDecorations } from '../components/AuthDecorations'
 import { useCDCoin } from '../hooks/useCDCoin'
 import { theme } from '../styles/theme'
+import { countries, brazilianCities, languages, getDDDByCity } from '../utils/locationData'
 
 export function Auth() {
   const [mode, setMode] = useState('login') // login ou register
@@ -14,14 +15,44 @@ export function Auth() {
     password: '',
     name: '',
     username: '',
-    phone: '', // Número de telefone para WhatsApp
+    country: 'BR',
+    city: '',
+    phone: '',
+    language: 'pt-BR',
   })
   const { login, register } = useAuth()
   const { adicionarPontos } = useCDCoin()
 
+  const selectedCountry = countries.find(c => c.code === formData.country) || countries[0]
+  
+  // Se o país for Brasil, mostrar cidades brasileiras
+  const showCities = formData.country === 'BR'
+
   const handleChange = (e) => {
     const { name, value } = e.target
-    setFormData(prev => ({ ...prev, [name]: value }))
+    setFormData(prev => {
+      const updated = { ...prev, [name]: value }
+      
+      // Quando muda o país, atualiza o idioma automaticamente
+      if (name === 'country') {
+        const country = countries.find(c => c.code === value)
+        if (country) {
+          updated.language = country.language
+          updated.city = '' // Limpa cidade ao mudar de país
+          updated.phone = '' // Limpa telefone ao mudar de país
+        }
+      }
+      
+      // Quando muda a cidade (Brasil), atualiza o DDD no telefone
+      if (name === 'city' && value) {
+        const ddd = getDDDByCity(value)
+        if (ddd) {
+          updated.phone = `(${ddd}) `
+        }
+      }
+      
+      return updated
+    })
   }
 
   const handleSubmit = (e) => {
@@ -29,17 +60,42 @@ export function Auth() {
     if (mode === 'login') {
       login(formData.email, formData.password)
     } else {
+      // Montar número completo com DDI
+      const fullPhone = `+${selectedCountry.ddi} ${formData.phone}`
+      
       register({
         name: formData.name,
         username: formData.username,
         email: formData.email,
         password: formData.password,
-        phone: formData.phone, // Enviar telefone
+        phone: fullPhone,
+        country: formData.country,
+        city: formData.city,
+        language: formData.language,
       }).then(() => {
-        // Dar 50 CDCOIN de boas-vindas
         adicionarPontos(50, '🎉 Cadastro realizado!')
       })
     }
+  }
+
+  const selectStyle = {
+    width: '100%',
+    padding: '12px 16px',
+    borderRadius: theme.borderRadius.md,
+    border: `1px solid ${theme.colors.border}`,
+    background: theme.colors.surface,
+    color: theme.colors.text,
+    fontSize: theme.fonts.sizes.md,
+    outline: 'none',
+    cursor: 'pointer',
+  }
+
+  const labelStyle = {
+    display: 'block',
+    marginBottom: '4px',
+    fontSize: theme.fonts.sizes.sm,
+    color: theme.colors.textSecondary,
+    fontWeight: '500',
   }
 
   return (
@@ -52,12 +108,13 @@ export function Auth() {
         justifyContent: 'center',
         overflowY: 'auto',
         position: 'relative',
+        padding: '20px 0',
       }}
     >
       {/* Decorações animadas */}
       <AuthDecorations />
 
-      <Container style={{ maxWidth: '400px', width: '100%', position: 'relative', zIndex: 1 }}>
+      <Container style={{ maxWidth: '420px', width: '100%', position: 'relative', zIndex: 1 }}>
         <Card>
           <div style={{ textAlign: 'center', marginBottom: theme.spacing.xl }}>
             <h1 style={{ fontSize: theme.fonts.sizes.xxl, marginBottom: theme.spacing.md }}>
@@ -103,16 +160,112 @@ export function Auth() {
                   placeholder="seu_usuario"
                   required
                 />
-                <Input
-                  label="Telefone (WhatsApp)"
-                  name="phone"
-                  type="tel"
-                  value={formData.phone}
-                  onChange={handleChange}
-                  placeholder="+55 11 99999-9999"
-                  required
-                  helperText="Usado para encontrar seus contatos do WhatsApp"
-                />
+
+                {/* País */}
+                <div style={{ marginBottom: theme.spacing.md }}>
+                  <label style={labelStyle}>🌍 País</label>
+                  <select
+                    name="country"
+                    value={formData.country}
+                    onChange={handleChange}
+                    style={selectStyle}
+                  >
+                    {countries.map(c => (
+                      <option key={c.code} value={c.code}>
+                        {c.flag} {c.name} (+{c.ddi})
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                {/* Cidade (só para Brasil) */}
+                {showCities && (
+                  <div style={{ marginBottom: theme.spacing.md }}>
+                    <label style={labelStyle}>🏙️ Cidade</label>
+                    <select
+                      name="city"
+                      value={formData.city}
+                      onChange={handleChange}
+                      style={selectStyle}
+                    >
+                      <option value="">Selecione sua cidade</option>
+                      {brazilianCities.map((c, idx) => (
+                        <option key={idx} value={c.name}>
+                          {c.name} - {c.state} (DDD {c.ddd})
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                )}
+
+                {/* Telefone com DDI */}
+                <div style={{ marginBottom: theme.spacing.md }}>
+                  <label style={labelStyle}>📱 WhatsApp</label>
+                  <div style={{ display: 'flex', gap: '8px' }}>
+                    <div style={{
+                      padding: '12px 12px',
+                      borderRadius: theme.borderRadius.md,
+                      border: `1px solid ${theme.colors.border}`,
+                      background: theme.colors.surface,
+                      color: theme.colors.text,
+                      fontSize: theme.fonts.sizes.md,
+                      whiteSpace: 'nowrap',
+                      display: 'flex',
+                      alignItems: 'center',
+                    }}>
+                      {selectedCountry.flag} +{selectedCountry.ddi}
+                    </div>
+                    <input
+                      name="phone"
+                      type="tel"
+                      value={formData.phone}
+                      onChange={handleChange}
+                      placeholder={showCities && formData.city ? "(11) 99999-9999" : "99999-9999"}
+                      required
+                      style={{
+                        flex: 1,
+                        padding: '12px 16px',
+                        borderRadius: theme.borderRadius.md,
+                        border: `1px solid ${theme.colors.border}`,
+                        background: theme.colors.surface,
+                        color: theme.colors.text,
+                        fontSize: theme.fonts.sizes.md,
+                        outline: 'none',
+                      }}
+                    />
+                  </div>
+                  <p style={{ 
+                    fontSize: theme.fonts.sizes.xs, 
+                    color: theme.colors.textSecondary, 
+                    marginTop: '4px' 
+                  }}>
+                    Usado para encontrar seus contatos do WhatsApp
+                  </p>
+                </div>
+
+                {/* Idioma */}
+                <div style={{ marginBottom: theme.spacing.md }}>
+                  <label style={labelStyle}>🌐 Idioma</label>
+                  <select
+                    name="language"
+                    value={formData.language}
+                    onChange={handleChange}
+                    style={selectStyle}
+                  >
+                    {languages.map(l => (
+                      <option key={l.code} value={l.code}>
+                        {l.flag} {l.name}
+                      </option>
+                    ))}
+                  </select>
+                  <p style={{ 
+                    fontSize: theme.fonts.sizes.xs, 
+                    color: theme.colors.textSecondary, 
+                    marginTop: '4px' 
+                  }}>
+                    Idioma detectado: {selectedCountry?.flag} {languages.find(l => l.code === selectedCountry?.language)?.name || 'Português'}
+                  </p>
+                </div>
               </>
             )}
 
