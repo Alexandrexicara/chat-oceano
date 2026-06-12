@@ -96,7 +96,7 @@ export function Status() {
     return `${mins}:${secs.toString().padStart(2, '0')}`
   }
 
-  // Componente Garrafa
+  // Componente Garrafa (HORIZONTAL - boiando no mar)
   const BottleIcon = ({ isOwn }) => (
     <div style={{
       display: 'flex',
@@ -104,7 +104,12 @@ export function Status() {
       justifyContent: 'center',
       padding: '20px',
     }}>
-      <div style={{ position: 'relative' }}>
+      <div style={{ 
+        position: 'relative',
+        display: 'flex',
+        alignItems: 'center',
+        transform: 'rotate(90deg)', // Horizontal
+      }}>
         {/* Corpo da garrafa */}
         <div style={{
           width: '50px',
@@ -121,13 +126,15 @@ export function Status() {
           background: isOwn ? '#4ade80' : '#1a4d6d',
           border: `2px solid ${theme.colors.secondary}`,
           borderRadius: '4px 4px 0 0',
-          margin: '0 auto',
+          position: 'absolute',
+          top: '-30px',
+          left: '15px',
         }} />
       </div>
     </div>
   )
 
-  // Componente Barril
+  // Componente Barril (HORIZONTAL - boiando no mar)
   const BarrelIcon = ({ isOwn }) => (
     <div style={{
       display: 'flex',
@@ -139,8 +146,8 @@ export function Status() {
         src="/img/barril.png" 
         alt="Barril de vídeo"
         style={{
-          width: '150px',
-          height: '150px',
+          width: '180px',
+          height: '90px',
           objectFit: 'contain',
           filter: isOwn 
             ? 'drop-shadow(0 0 12px rgba(74,222,128,0.5)) brightness(1.1)'
@@ -155,28 +162,31 @@ export function Status() {
       />
       <div style={{
         display: 'none',
-        width: '80px',
-        height: '50px',
+        width: '120px',
+        height: '60px',
         background: 'linear-gradient(90deg, #8B6914, #A0782C, #8B6914)',
-        borderRadius: '10px',
+        borderRadius: '30px',
         position: 'relative',
-        border: '2px solid #654321',
+        border: '3px solid #4A3008',
+        boxShadow: '0 4px 12px rgba(0,0,0,0.4)',
       }}>
         <div style={{
           position: 'absolute',
-          top: '5px',
-          left: '10px',
-          right: '10px',
-          height: '3px',
-          background: '#654321',
+          left: '20px',
+          top: '0',
+          bottom: '0',
+          width: '6px',
+          background: 'linear-gradient(180deg, #666, #999, #666)',
+          borderRadius: '3px',
         }} />
         <div style={{
           position: 'absolute',
-          bottom: '5px',
-          left: '10px',
-          right: '10px',
-          height: '3px',
-          background: '#654321',
+          right: '20px',
+          top: '0',
+          bottom: '0',
+          width: '6px',
+          background: 'linear-gradient(180deg, #666, #999, #666)',
+          borderRadius: '3px',
         }} />
       </div>
     </div>
