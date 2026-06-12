@@ -1266,7 +1266,7 @@ export function Chat({ oceanoMode }) {
     return (
       <div style={{ height: 'calc(100vh - 60px)', background: theme.colors.background, display: 'flex', flexDirection: 'column' }}>
         <Header>
-          <h1 style={{ fontSize: theme.fonts.sizes.xl }}>🌊 Oceano Coletivo</h1>
+          <h1 style={{ fontSize: theme.fonts.sizes.xl }}>🌊 Oceano</h1>
           <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
             <CDCoinDisplay 
               saldo={saldo} 
