@@ -127,7 +127,11 @@ export function VideoRecorder({ onRecordingComplete }) {
       }
 
       const mediaRecorder = new MediaRecorder(stream, {
-        mimeType: 'video/webm;codecs=vp9,opus'
+        mimeType: MediaRecorder.isTypeSupported('video/webm;codecs=vp9,opus') 
+          ? 'video/webm;codecs=vp9,opus'
+          : MediaRecorder.isTypeSupported('video/webm;codecs=vp8,opus')
+          ? 'video/webm;codecs=vp8,opus'
+          : 'video/webm'
       })
       mediaRecorderRef.current = mediaRecorder
       chunksRef.current = []

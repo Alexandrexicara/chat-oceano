@@ -1,15 +1,18 @@
-import { useState, useRef } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import { useAuth } from '../context/AuthContext'
 import { Header, Container, Card, Button, Input, Badge } from '../components/BaseComponents'
 import { theme } from '../styles/theme'
 import { AudioRecorder, VideoRecorder } from '../components/AudioVideoRecorder'
 import { playBottleSound } from '../utils/sounds'
+import { MiniAnuncio } from '../components/MiniAnuncio'
+import { ExoclickAd } from '../components/ExoclickAd'
 
 export function Status() {
   const { user, logout } = useAuth()
   const [mode, setMode] = useState('view') // view ou create
   const [statusForm, setStatusForm] = useState({ text: '', mediaUrl: '', mediaType: '' })
   const [selectedStatus, setSelectedStatus] = useState(null) // Status selecionado para abrir
+  const [showAnuncio, setShowAnuncio] = useState(false) // Controla exibição de anúncio
   const [statuses, setStatuses] = useState([
     {
       id: 1,
@@ -309,11 +312,7 @@ export function Status() {
                           <p style={{ fontSize: theme.fonts.sizes.sm, textAlign: 'center', marginTop: '8px' }}>
                             🍾 🎤 Áudio na garrafa
                           </p>
-                          {status.mediaUrl && (
-                            <audio controls style={{ width: '100%', marginTop: '8px' }}>
-                              <source src={status.mediaUrl} />
-                            </audio>
-                          )}
+                          {/* Áudio NÃO fica visível na lista - só abre no modal */}
                         </>
                       ) : (
                         <>
@@ -366,22 +365,26 @@ export function Status() {
                 value={statusForm.text}
                 onChange={e => setStatusForm({ ...statusForm, text: e.target.value })}
                 placeholder="Compartilhe um momento..."
-                rows={4}
-                style={{ fontFamily: theme.fonts.family.base }}
+                rows={8}
+                style={{ 
+                  fontFamily: theme.fonts.family.base,
+                  minHeight: '200px',
+                  fontSize: theme.fonts.sizes.md,
+                }}
               />
 
               {/* Preview do mídia */}
               {statusForm.mediaUrl && (
                 <div style={{ marginBottom: theme.spacing.md }}>
                   {statusForm.mediaType === 'video' ? (
-                    <div style={{ textAlign: 'center', padding: theme.spacing.lg, background: theme.colors.background, borderRadius: theme.borderRadius.md }}>
-                      <p style={{ fontSize: '40px', marginBottom: theme.spacing.sm }}>🛢️</p>
-                      <p style={{ fontSize: theme.fonts.sizes.sm, color: theme.colors.textSecondary }}>Vídeo gravado (barril)</p>
+                    <div style={{ textAlign: 'center', padding: theme.spacing.xl, background: theme.colors.background, borderRadius: theme.borderRadius.md, minHeight: '150px' }}>
+                      <p style={{ fontSize: '60px', marginBottom: theme.spacing.md }}>🛢️</p>
+                      <p style={{ fontSize: theme.fonts.sizes.md, color: theme.colors.textSecondary }}>Vídeo gravado (barril)</p>
                     </div>
                   ) : statusForm.mediaType === 'audio' ? (
-                    <div style={{ textAlign: 'center', padding: theme.spacing.lg, background: theme.colors.background, borderRadius: theme.borderRadius.md }}>
-                      <p style={{ fontSize: '40px', marginBottom: theme.spacing.sm }}>🍾</p>
-                      <p style={{ fontSize: theme.fonts.sizes.sm, color: theme.colors.textSecondary }}>Áudio gravado (garrafa)</p>
+                    <div style={{ textAlign: 'center', padding: theme.spacing.xl, background: theme.colors.background, borderRadius: theme.borderRadius.md, minHeight: '150px' }}>
+                      <p style={{ fontSize: '60px', marginBottom: theme.spacing.md }}>🍾</p>
+                      <p style={{ fontSize: theme.fonts.sizes.md, color: theme.colors.textSecondary }}>Áudio gravado (garrafa)</p>
                     </div>
                   ) : null}
                 </div>
@@ -393,11 +396,31 @@ export function Status() {
                 <VideoRecorder onRecordingComplete={handleVideoRecording} />
               </div>
 
+              {/* Botão de Publicar Anúncio */}
+              <div style={{ marginBottom: theme.spacing.lg }}>
+                <Button
+                  type="button"
+                  variant="secondary"
+                  onClick={() => setShowAnuncio(true)}
+                  style={{ 
+                    width: '100%',
+                    padding: `${theme.spacing.md} ${theme.spacing.lg}`,
+                    fontSize: theme.fonts.sizes.md,
+                  }}
+                >
+                  📺 Ver Anúncio (ganhe CDCOINs)
+                </Button>
+              </div>
+
               <div style={{ display: 'flex', gap: theme.spacing.md }}>
                 <Button
                   type="submit"
                   variant="primary"
-                  style={{ flex: 1 }}
+                  style={{ 
+                    flex: 1,
+                    padding: `${theme.spacing.md} ${theme.spacing.lg}`,
+                    fontSize: theme.fonts.sizes.lg,
+                  }}
                 >
                   📤 Publicar
                 </Button>
@@ -408,7 +431,11 @@ export function Status() {
                     setMode('view')
                     setStatusForm({ text: '', mediaUrl: '', mediaType: '' })
                   }}
-                  style={{ flex: 1 }}
+                  style={{ 
+                    flex: 1,
+                    padding: `${theme.spacing.md} ${theme.spacing.lg}`,
+                    fontSize: theme.fonts.sizes.lg,
+                  }}
                 >
                   Cancelar
                 </Button>
@@ -417,6 +444,11 @@ export function Status() {
           </Card>
         )}
       </Container>
+
+      {/* Modal de Anúncio */}
+      {showAnuncio && (
+        <MiniAnuncio onClose={() => setShowAnuncio(false)} />
+      )}
 
       {/* Modal de Status - Abre garrafa/barril ao clicar */}
       {selectedStatus && (
@@ -479,6 +511,9 @@ export function Status() {
                 </p>
               </div>
             </div>
+
+            {/* Anúncio Exoclick */}
+            <ExoclickAd />
 
             {/* Conteúdo */}
             <div style={{ marginBottom: '16px' }}>
