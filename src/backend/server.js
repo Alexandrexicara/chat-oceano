@@ -363,10 +363,15 @@ async function initializeDatabase() {
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       );
 
-      -- Adicionar coluna language se não existir (para bancos antigos)
+      -- Adicionar colunas que podem estar faltando em tabelas existentes
+      ALTER TABLE users ADD COLUMN IF NOT EXISTS phone VARCHAR(30);
+      ALTER TABLE users ADD COLUMN IF NOT EXISTS bio TEXT;
+      ALTER TABLE users ADD COLUMN IF NOT EXISTS city VARCHAR(100);
+      ALTER TABLE users ADD COLUMN IF NOT EXISTS country VARCHAR(10);
       ALTER TABLE users ADD COLUMN IF NOT EXISTS language VARCHAR(10) DEFAULT 'pt-BR';
-      ALTER TABLE users ALTER COLUMN phone TYPE VARCHAR(30);
-      ALTER TABLE users ALTER COLUMN country TYPE VARCHAR(10);
+      ALTER TABLE users ADD COLUMN IF NOT EXISTS avatar VARCHAR(255);
+      ALTER TABLE users ADD COLUMN IF NOT EXISTS status VARCHAR(20) DEFAULT 'Online';
+      ALTER TABLE users ADD COLUMN IF NOT EXISTS created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP;
 
       CREATE TABLE IF NOT EXISTS messages (
         id SERIAL PRIMARY KEY,
