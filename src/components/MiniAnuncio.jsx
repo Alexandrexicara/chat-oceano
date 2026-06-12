@@ -44,18 +44,18 @@ export function MiniAnuncio({ onClose }) {
   useEffect(() => {
     // Timer de 30 segundos
     const timer = setInterval(() => {
-      setTempoRestante(prev => {
-        if (prev <= 1) {
-          clearInterval(timer)
-          onClose()
-          return 0
-        }
-        return prev - 1
-      })
+      setTempoRestante(prev => prev - 1)
     }, 1000)
 
     return () => clearInterval(timer)
-  }, [onClose])
+  }, [])
+
+  // Fechar quando chegar a 0
+  useEffect(() => {
+    if (tempoRestante <= 0) {
+      onClose()
+    }
+  }, [tempoRestante, onClose])
 
   // Calcular progresso da barra
   const progresso = (tempoRestante / 30) * 100
@@ -187,22 +187,19 @@ export function MiniAnuncio({ onClose }) {
           </button>
         )}
       </div>
+      {/* Animação via CSS inline */}
+      <style>{`
+        @keyframes slideInRight {
+          from {
+            transform: translateX(400px);
+            opacity: 0;
+          }
+          to {
+            transform: translateX(0);
+            opacity: 1;
+          }
+        }
+      `}</style>
     </div>
   )
 }
-
-// CSS animation (adicionar no index.css ou global)
-const style = document.createElement('style')
-style.textContent = `
-  @keyframes slideInRight {
-    from {
-      transform: translateX(400px);
-      opacity: 0;
-    }
-    to {
-      transform: translateX(0);
-      opacity: 1;
-    }
-  }
-`
-document.head.appendChild(style)

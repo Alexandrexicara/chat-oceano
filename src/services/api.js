@@ -1,6 +1,9 @@
 import axios from 'axios';
 
-const API_URL = 'http://localhost:3000/api';
+// Detectar URL da API baseada no ambiente
+const API_URL = window.location.hostname === 'localhost' 
+  ? 'http://localhost:3000/api'
+  : `${window.location.origin}/api`;
 
 // Criar instancia do axios
 const api = axios.create({

@@ -775,8 +775,25 @@ export function Chat({ oceanoMode }) {
 
   // Configurar WebSocket
   useEffect(() => {
-    socketRef.current = io('http://localhost:3000')
+    // Detectar URL do backend (local ou produção)
+    const backendUrl = window.location.hostname === 'localhost' 
+      ? 'http://localhost:3000' 
+      : window.location.origin
     
+    socketRef.current = io(backendUrl, {
+      reconnection: true,
+      reconnectionDelay: 5000, // 5 segundos entre tentativas
+      reconnectionAttempts: 5, // Máximo 5 tentativas
+      timeout: 10000, // Timeout de 10 segundos
+    })
+    
+    socketRef.current.on('connect', () => {
+      console.log('✅ WebSocket conectado!')
+    })
+    
+    socketRef.current.on('connect_error', (err) => {
+      console.log('⚠️ WebSocket não conectado (backend offline):', err.message)
+    })
     socketRef.current.on('new_message', (message) => {
       // Som de garrafa quando recebe nova mensagem
       playBottleSound()
