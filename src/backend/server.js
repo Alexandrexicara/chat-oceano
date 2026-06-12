@@ -66,6 +66,41 @@ const storage = multer.diskStorage({
 });
 const upload = multer({ storage: storage });
 
+// ===== MIGRAÇÃO AUTOMÁTICA DE TIPOS DE COLUNAS =====
+// Alterar colunas integer para bigint para suportar IDs grandes
+async function migrateToBigint() {
+  try {
+    console.log('🔄 Executando migração: integer → bigint...');
+    
+    // Alterar colunas da tabela messages
+    await pool.query(`
+      ALTER TABLE messages 
+      ALTER COLUMN sender_id TYPE bigint,
+      ALTER COLUMN receiver_id TYPE bigint
+    `).catch(e => console.log('   messages: já está bigint'));
+    
+    // Alterar colunas da tabela contacts
+    await pool.query(`
+      ALTER TABLE contacts 
+      ALTER COLUMN user_id TYPE bigint,
+      ALTER COLUMN contact_id TYPE bigint
+    `).catch(e => console.log('   contacts: já está bigint'));
+    
+    // Alterar coluna da tabela users
+    await pool.query(`
+      ALTER TABLE users 
+      ALTER COLUMN id TYPE bigint
+    `).catch(e => console.log('   users: já está bigint'));
+    
+    console.log('✅ Migração concluída!');
+  } catch (error) {
+    console.error('⚠️ Aviso migração:', error.message);
+  }
+}
+
+// Executar migração ao iniciar
+migrateToBigint();
+
 // ===== ROTAS DA API =====
 
 // Testar conexão com banco
@@ -139,6 +174,8 @@ app.post('/api/auth/login', async (req, res) => {
     
     res.json(result.rows[0]);
   } catch (error) {
+    console.error('❌ Erro no login:', error.message);
+    console.error('Detalhes:', error.detail);
     res.status(500).json({ error: error.message });
   }
 });
@@ -230,7 +267,7 @@ app.post('/api/messages', async (req, res) => {
   try {
     const result = await pool.query(
       `INSERT INTO messages (sender_id, receiver_id, text, media_url, media_type, file_name, is_oceano) 
-       VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING *`,
+       VALUES ($1::bigint, $2::bigint, $3, $4, $5, $6, $7) RETURNING *`,
       [sender_id, receiver_id || null, text, media_url || null, media_type || null, file_name || null, is_oceano || false]
     );
     
@@ -239,6 +276,7 @@ app.post('/api/messages', async (req, res) => {
     
     res.status(201).json(result.rows[0]);
   } catch (error) {
+    console.error('❌ Erro ao enviar mensagem:', error.message);
     res.status(500).json({ error: error.message });
   }
 });
@@ -261,13 +299,14 @@ app.get('/api/messages/:userId1/:userId2', async (req, res) => {
   try {
     const result = await pool.query(
       `SELECT * FROM messages 
-       WHERE (sender_id = $1 AND receiver_id = $2) 
-          OR (sender_id = $2 AND receiver_id = $1)
+       WHERE (sender_id = $1::bigint AND receiver_id = $2::bigint) 
+          OR (sender_id = $2::bigint AND receiver_id = $1::bigint)
        ORDER BY created_at ASC`,
       [userId1, userId2]
     );
     res.json(result.rows);
   } catch (error) {
+    console.error('❌ Erro ao buscar mensagens:', error.message);
     res.status(500).json({ error: error.message });
   }
 });
@@ -279,7 +318,7 @@ app.get('/api/contacts/:userId', async (req, res) => {
   const { userId } = req.params;
   try {
     // Verificar se usuário existe
-    const userCheck = await pool.query('SELECT id FROM users WHERE id = $1', [userId]);
+    const userCheck = await pool.query('SELECT id FROM users WHERE id = $1::bigint', [userId]);
     
     if (userCheck.rows.length === 0) {
       // Usuário não existe, retorna array vazio (não é erro)
@@ -289,7 +328,7 @@ app.get('/api/contacts/:userId', async (req, res) => {
     const result = await pool.query(
       `SELECT u.* FROM contacts c 
        JOIN users u ON c.contact_id = u.id 
-       WHERE c.user_id = $1`,
+       WHERE c.user_id = $1::bigint`,
       [userId]
     );
     res.json(result.rows);
@@ -335,11 +374,12 @@ app.post('/api/contacts', async (req, res) => {
   const { user_id, contact_id } = req.body;
   try {
     const result = await pool.query(
-      'INSERT INTO contacts (user_id, contact_id) VALUES ($1, $2) RETURNING *',
+      'INSERT INTO contacts (user_id, contact_id) VALUES ($1::bigint, $2::bigint) RETURNING *',
       [user_id, contact_id]
     );
     res.status(201).json(result.rows[0]);
   } catch (error) {
+    console.error('❌ Erro ao adicionar contato:', error.message);
     res.status(500).json({ error: error.message });
   }
 });
