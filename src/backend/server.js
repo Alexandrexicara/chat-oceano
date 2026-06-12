@@ -41,7 +41,17 @@ const pool = new Pool({
   host: process.env.DB_HOST,
   port: process.env.DB_PORT,
   database: process.env.DB_NAME,
+  ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false,
+  connectionTimeoutMillis: 10000, // 10 segundos timeout
 });
+
+// Log de diagnóstico do banco
+console.log('🔧 Configuração do Banco:');
+console.log(`   DB_HOST: ${process.env.DB_HOST || 'NÃO DEFINIDO'}`);
+console.log(`   DB_PORT: ${process.env.DB_PORT || 'NÃO DEFINIDO'}`);
+console.log(`   DB_NAME: ${process.env.DB_NAME || 'NÃO DEFINIDO'}`);
+console.log(`   DB_USER: ${process.env.DB_USER || 'NÃO DEFINIDO'}`);
+console.log(`   DB_PASSWORD: ${process.env.DB_PASSWORD ? '***definido***' : 'NÃO DEFINIDO'}`);
 
 // Configuração do multer para uploads
 const storage = multer.diskStorage({
@@ -300,6 +310,14 @@ app.get('/{*splat}', (req, res) => {
 
 async function initializeDatabase() {
   try {
+    // Testar conexão primeiro
+    console.log('🔄 Testando conexão com PostgreSQL...');
+    const client = await pool.connect();
+    console.log('✅ Conexão estabelecida com PostgreSQL!');
+    client.release();
+
+    // Criar tabelas
+    console.log('🔄 Criando/verificando tabelas...');
     await pool.query(`
       CREATE TABLE IF NOT EXISTS users (
         id SERIAL PRIMARY KEY,
@@ -342,6 +360,13 @@ async function initializeDatabase() {
     
     console.log('✅ Tabelas criadas/verificadas com sucesso!');
   } catch (error) {
-    console.error('❌ Erro ao inicializar banco de dados:', error.message);
+    console.error('❌ Erro ao inicializar banco de dados:');
+    console.error('   Tipo:', error.name);
+    console.error('   Mensagem:', error.message || 'Sem mensagem');
+    console.error('   Código:', error.code || 'Sem código');
+    console.error('   Detalhe:', error.detail || 'Sem detalhe');
+    console.error('   Stack:', error.stack?.substring(0, 200) || 'Sem stack');
+    console.log('\n⚠️  O app continua rodando, mas sem banco de dados!');
+    console.log('   Verifique as variáveis de ambiente no Render.');
   }
 }
