@@ -17,6 +17,7 @@ export function Status() {
   const [showAnuncio, setShowAnuncio] = useState(false) // Controla exibição de anúncio
   const [statuses, setStatuses] = useState([]) // REMOVIDO: dados mockados - agora vem do banco
   const [loading, setLoading] = useState(true)
+  const [publishing, setPublishing] = useState(false) // Loading do botão publicar
 
   // Carregar status REAIS do banco de dados
   useEffect(() => {
@@ -59,13 +60,23 @@ export function Status() {
 
   const handleCreateStatus = async (e) => {
     e.preventDefault()
-    if (!statusForm.text.trim() && !statusForm.mediaUrl) return
+    console.log('🔵 Tentando publicar status...')
+    console.log('📝 Formulário:', statusForm)
+    console.log('👤 Usuário:', user)
+    
+    if (!statusForm.text.trim() && !statusForm.mediaUrl) {
+      console.log('❌ Formulário vazio')
+      return
+    }
+
+    setPublishing(true) // Inicia loading
 
     try {
       let mediaUrlFinal = statusForm.mediaUrl
       
       // Se tem mídia gravada (blob), fazer upload para o servidor
       if (statusForm.mediaUrl && statusForm.mediaUrl.startsWith('blob:')) {
+        console.log('📤 Fazendo upload da mídia...')
         try {
           // Converter blob URL para File
           const response = await fetch(statusForm.mediaUrl)
@@ -88,6 +99,7 @@ export function Status() {
         }
       }
       
+      console.log('📡 Enviando para API...')
       // Enviar status REAL para o banco de dados
       const newMessage = await sendApiMessage({
         sender_id: user?.id,
@@ -96,6 +108,8 @@ export function Status() {
         media_type: statusForm.mediaType,
         is_oceano: true, // Status é público (oceano)
       })
+      
+      console.log('✅ API respondeu:', newMessage)
 
       // Adicionar ao estado local
       const newStatus = {
@@ -113,15 +127,21 @@ export function Status() {
         sender_id: user?.id,
       }
 
+      console.log('✅ Status criado localmente:', newStatus)
+
       setStatuses([newStatus, ...statuses])
       setStatusForm({ text: '', mediaUrl: '', mediaType: '' })
       setMode('view')
       playBottleSound()
       
+      console.log('✅ Status publicado com sucesso!')
       alert('✅ Status publicado com sucesso!')
     } catch (error) {
       console.error('❌ Erro ao criar status:', error)
-      alert('Erro ao publicar status. Tente novamente.')
+      console.error('❌ Detalhes:', error.response?.data || error.message)
+      alert('Erro ao publicar status: ' + (error.response?.data?.error || error.message))
+    } finally {
+      setPublishing(false) // Finaliza loading
     }
   }
 
@@ -455,7 +475,12 @@ export function Status() {
             `}</style>
           </>
         ) : (
-          <Card style={{ maxWidth: '500px', margin: '0 auto' }}>
+          <Card style={{ 
+            maxWidth: '500px', 
+            margin: '0 auto',
+            maxHeight: '85vh',
+            overflowY: 'auto',
+          }}>
             <h2 style={{ marginBottom: theme.spacing.lg }}>Criar Novo Status 🍾</h2>
 
             <form onSubmit={handleCreateStatus}>
@@ -512,17 +537,20 @@ export function Status() {
                 </Button>
               </div>
 
-              <div style={{ display: 'flex', gap: theme.spacing.md }}>
+              <div style={{ display: 'flex', gap: theme.spacing.md, marginTop: theme.spacing.lg }}>
                 <Button
                   type="submit"
                   variant="primary"
+                  disabled={publishing}
                   style={{ 
                     flex: 1,
                     padding: `${theme.spacing.md} ${theme.spacing.lg}`,
                     fontSize: theme.fonts.sizes.lg,
+                    background: publishing ? '#999' : theme.colors.primary,
+                    cursor: publishing ? 'not-allowed' : 'pointer',
                   }}
                 >
-                  📤 Publicar
+                  {publishing ? '⏳ Publicando...' : '📤 Publicar'}
                 </Button>
                 <Button
                   type="button"
@@ -531,6 +559,7 @@ export function Status() {
                     setMode('view')
                     setStatusForm({ text: '', mediaUrl: '', mediaType: '' })
                   }}
+                  disabled={publishing}
                   style={{ 
                     flex: 1,
                     padding: `${theme.spacing.md} ${theme.spacing.lg}`,
