@@ -28,6 +28,7 @@ export function AuthProvider({ children }) {
       
       const newUser = {
         ...backendUser,
+        phone: userData.phone, // Salvar telefone
         createdAt: backendUser.created_at || new Date().toISOString(),
         followers: 0,
         statusCount: 0,
@@ -43,6 +44,7 @@ export function AuthProvider({ children }) {
       const newUser = {
         id: Date.now(),
         ...userData,
+        phone: userData.phone, // Salvar telefone
         createdAt: new Date().toISOString(),
         followers: 0,
         statusCount: 0,

@@ -27,6 +27,18 @@ export const getUserByUsername = async (username) => {
   return response.data;
 };
 
+// Buscar usuários por telefones (WhatsApp)
+export const findUsersByPhones = async (phones) => {
+  const response = await api.post('/users/find-by-phones', { phones });
+  return response.data;
+};
+
+// Enviar convite via WhatsApp
+export const sendWhatsAppInvite = async (phone, inviterName) => {
+  const response = await api.post('/invite/whatsapp', { phone, inviterName });
+  return response.data;
+};
+
 // ===== MENSAGENS =====
 
 export const sendMessage = async (messageData) => {

@@ -10,6 +10,7 @@ export function Auth() {
     password: '',
     name: '',
     username: '',
+    phone: '', // Número de telefone para WhatsApp
   })
   const { login, register } = useAuth()
 
@@ -72,6 +73,16 @@ export function Auth() {
                   onChange={handleChange}
                   placeholder="seu_usuario"
                   required
+                />
+                <Input
+                  label="Telefone (WhatsApp)"
+                  name="phone"
+                  type="tel"
+                  value={formData.phone}
+                  onChange={handleChange}
+                  placeholder="+55 11 99999-9999"
+                  required
+                  helperText="Usado para encontrar seus contatos do WhatsApp"
                 />
               </>
             )}

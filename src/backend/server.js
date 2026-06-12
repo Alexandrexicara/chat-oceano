@@ -80,16 +80,22 @@ app.post('/api/upload', upload.single('file'), (req, res) => {
 
 // Login ou criar usuário
 app.post('/api/auth/login', async (req, res) => {
-  const { username, name } = req.body;
+  const { username, name, phone } = req.body;
   try {
     // Tentar encontrar usuário
     let result = await pool.query('SELECT * FROM users WHERE username = $1', [username]);
     
     if (result.rows.length === 0) {
-      // Criar novo usuário
+      // Criar novo usuário com telefone
       result = await pool.query(
-        'INSERT INTO users (name, username, bio) VALUES ($1, $2, $3) RETURNING *',
-        [name || username, username, 'Novo no Oceanos 🌊']
+        'INSERT INTO users (name, username, phone, bio) VALUES ($1, $2, $3, $4) RETURNING *',
+        [name || username, username, phone || null, 'Novo no Oceanos 🌊']
+      );
+    } else if (phone && !result.rows[0].phone) {
+      // Atualizar telefone se não tiver
+      await pool.query(
+        'UPDATE users SET phone = $1 WHERE username = $2',
+        [phone, username]
       );
     }
     
@@ -101,11 +107,11 @@ app.post('/api/auth/login', async (req, res) => {
 
 // Criar usuário
 app.post('/api/users', async (req, res) => {
-  const { name, username, bio, city, country } = req.body;
+  const { name, username, phone, bio, city, country } = req.body;
   try {
     const result = await pool.query(
-      'INSERT INTO users (name, username, bio, city, country) VALUES ($1, $2, $3, $4, $5) RETURNING *',
-      [name, username, bio, city, country]
+      'INSERT INTO users (name, username, phone, bio, city, country) VALUES ($1, $2, $3, $4, $5, $6) RETURNING *',
+      [name, username, phone, bio, city, country]
     );
     res.status(201).json(result.rows[0]);
   } catch (error) {
@@ -178,6 +184,45 @@ app.get('/api/messages/:userId1/:userId2', async (req, res) => {
 });
 
 // ===== CONTATOS =====
+
+// Buscar usuários por telefone (para sincronizar contatos WhatsApp)
+app.post('/api/users/find-by-phones', async (req, res) => {
+  const { phones } = req.body; // Array de telefones
+  try {
+    const result = await pool.query(
+      'SELECT id, name, username, phone, avatar, status FROM users WHERE phone = ANY($1)',
+      [phones]
+    );
+    res.json(result.rows);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Enviar convite via WhatsApp (retorna link)
+app.post('/api/invite/whatsapp', async (req, res) => {
+  const { phone, inviterName } = req.body;
+  try {
+    // Gerar link de convite
+    const inviteLink = `https://oceanos.app/invite/${Date.now()}`;
+    const message = encodeURIComponent(
+      `🌊 Olá! ${inviterName} te convidou para o Oceanos - o mensageiro pirata!\n\n` +
+      `Entre agora e venha navegar conosco: ${inviteLink}\n\n` +
+      `🏴‍☠️ Baixe o app e cadastre-se!`
+    );
+    
+    // Link direto para WhatsApp
+    const whatsappLink = `https://wa.me/${phone}?text=${message}`;
+    
+    res.json({ 
+      success: true, 
+      whatsappLink,
+      message: 'Convite pronto para enviar!'
+    });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
 
 // Adicionar contato
 app.post('/api/contacts', async (req, res) => {
@@ -260,6 +305,7 @@ async function initializeDatabase() {
         id SERIAL PRIMARY KEY,
         name VARCHAR(100) NOT NULL,
         username VARCHAR(50) UNIQUE NOT NULL,
+        phone VARCHAR(20), -- Número de telefone para WhatsApp
         bio TEXT,
         city VARCHAR(100),
         country VARCHAR(100),
