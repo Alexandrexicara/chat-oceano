@@ -286,12 +286,33 @@ app.put('/api/users/:username', async (req, res) => {
 // Enviar mensagem (garrafa)
 app.post('/api/messages', async (req, res) => {
   const { sender_id, receiver_id, text, media_url, media_type, file_name, is_oceano } = req.body;
+  
+  console.log('📨 POST /api/messages:', {
+    sender_id,
+    receiver_id: receiver_id || null,
+    text: text?.substring(0, 50),
+    media_url: media_url?.substring(0, 50),
+    media_type,
+    is_oceano
+  });
+  
   try {
+    // Converter IDs para número (bigint)
+    const senderId = sender_id ? Number(sender_id) : null;
+    const receiverId = receiver_id ? Number(receiver_id) : null;
+    
+    if (!senderId) {
+      console.error('❌ sender_id é obrigatório! Recebido:', sender_id);
+      return res.status(400).json({ error: 'sender_id é obrigatório' });
+    }
+    
     const result = await pool.query(
       `INSERT INTO messages (sender_id, receiver_id, text, media_url, media_type, file_name, is_oceano) 
-       VALUES ($1::bigint, $2::bigint, $3, $4, $5, $6, $7) RETURNING *`,
-      [sender_id, receiver_id || null, text, media_url || null, media_type || null, file_name || null, is_oceano || false]
+       VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING *`,
+      [senderId, receiverId, text || '', media_url || null, media_type || null, file_name || null, is_oceano || false]
     );
+    
+    console.log('✅ Mensagem salva! ID:', result.rows[0].id);
     
     // Emitir evento via WebSocket
     io.emit('new_message', result.rows[0]);
@@ -299,7 +320,9 @@ app.post('/api/messages', async (req, res) => {
     res.status(201).json(result.rows[0]);
   } catch (error) {
     console.error('❌ Erro ao enviar mensagem:', error.message);
-    res.status(500).json({ error: error.message });
+    console.error('   Código:', error.code);
+    console.error('   Detalhe:', error.detail);
+    res.status(500).json({ error: error.message, code: error.code });
   }
 });
 
@@ -321,8 +344,8 @@ app.get('/api/messages/:userId1/:userId2', async (req, res) => {
   try {
     const result = await pool.query(
       `SELECT * FROM messages 
-       WHERE (sender_id = $1::bigint AND receiver_id = $2::bigint) 
-          OR (sender_id = $2::bigint AND receiver_id = $1::bigint)
+       WHERE (sender_id = $1 AND receiver_id = $2) 
+          OR (sender_id = $2 AND receiver_id = $1)
        ORDER BY created_at ASC`,
       [userId1, userId2]
     );
@@ -340,7 +363,7 @@ app.get('/api/contacts/:userId', async (req, res) => {
   const { userId } = req.params;
   try {
     // Verificar se usuário existe
-    const userCheck = await pool.query('SELECT id FROM users WHERE id = $1::bigint', [userId]);
+    const userCheck = await pool.query('SELECT id FROM users WHERE id = $1', [userId]);
     
     if (userCheck.rows.length === 0) {
       // Usuário não existe, retorna array vazio (não é erro)
@@ -350,7 +373,7 @@ app.get('/api/contacts/:userId', async (req, res) => {
     const result = await pool.query(
       `SELECT u.* FROM contacts c 
        JOIN users u ON c.contact_id = u.id 
-       WHERE c.user_id = $1::bigint`,
+       WHERE c.user_id = $1`,
       [userId]
     );
     res.json(result.rows);
@@ -397,7 +420,7 @@ app.post('/api/contacts', async (req, res) => {
   try {
     // Verificar se contato já existe
     const checkResult = await pool.query(
-      'SELECT id FROM contacts WHERE user_id = $1::bigint AND contact_id = $2::bigint',
+      'SELECT id FROM contacts WHERE user_id = $1 AND contact_id = $2',
       [user_id, contact_id]
     );
     
@@ -409,7 +432,7 @@ app.post('/api/contacts', async (req, res) => {
     
     // Adicionar novo contato
     const result = await pool.query(
-      'INSERT INTO contacts (user_id, contact_id) VALUES ($1::bigint, $2::bigint) RETURNING *',
+      'INSERT INTO contacts (user_id, contact_id) VALUES ($1, $2) RETURNING *',
       [user_id, contact_id]
     );
     console.log(`✅ Novo contato adicionado: ${user_id} -> ${contact_id}`);
@@ -492,10 +515,10 @@ async function initializeDatabase() {
     // Criar tabelas SEQUENCIALMENTE para evitar deadlock
     console.log('🔄 Criando/verificando tabelas...');
     
-    // 1. Criar tabela users
+    // 1. Criar tabela users (BIGSERIAL para suportar IDs grandes)
     await pool.query(`
       CREATE TABLE IF NOT EXISTS users (
-        id SERIAL PRIMARY KEY,
+        id BIGSERIAL PRIMARY KEY,
         name VARCHAR(100) NOT NULL,
         username VARCHAR(50) UNIQUE NOT NULL,
         phone VARCHAR(30),
@@ -521,10 +544,10 @@ async function initializeDatabase() {
     await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP`).catch(() => {});
     console.log('   ✅ Colunas users OK');
     
-    // 3. Criar tabela messages
+    // 3. Criar tabela messages (BIGSERIAL)
     await pool.query(`
       CREATE TABLE IF NOT EXISTS messages (
-        id SERIAL PRIMARY KEY,
+        id BIGSERIAL PRIMARY KEY,
         sender_id BIGINT REFERENCES users(id),
         receiver_id BIGINT REFERENCES users(id),
         text TEXT,
@@ -537,10 +560,10 @@ async function initializeDatabase() {
     `);
     console.log('   ✅ Tabela messages OK');
     
-    // 4. Criar tabela contacts
+    // 4. Criar tabela contacts (BIGSERIAL)
     await pool.query(`
       CREATE TABLE IF NOT EXISTS contacts (
-        id SERIAL PRIMARY KEY,
+        id BIGSERIAL PRIMARY KEY,
         user_id BIGINT REFERENCES users(id),
         contact_id BIGINT REFERENCES users(id),
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -555,6 +578,17 @@ async function initializeDatabase() {
     await pool.query(`CREATE INDEX IF NOT EXISTS idx_messages_oceano ON messages(is_oceano)`).catch(() => {});
     await pool.query(`CREATE INDEX IF NOT EXISTS idx_contacts_user ON contacts(user_id)`).catch(() => {});
     console.log('   ✅ Índices OK');
+    
+    // 6. Migrar SERIAL → BIGSERIAL para suportar IDs grandes
+    console.log('🔄 Verificando tipo das colunas ID...');
+    await pool.query(`ALTER TABLE users ALTER COLUMN id TYPE BIGINT`).catch(() => {});
+    await pool.query(`ALTER TABLE messages ALTER COLUMN id TYPE BIGINT`).catch(() => {});
+    await pool.query(`ALTER TABLE contacts ALTER COLUMN id TYPE BIGINT`).catch(() => {});
+    // Alterar sequências
+    await pool.query(`ALTER SEQUENCE users_id_seq AS BIGINT`).catch(() => {});
+    await pool.query(`ALTER SEQUENCE messages_id_seq AS BIGINT`).catch(() => {});
+    await pool.query(`ALTER SEQUENCE contacts_id_seq AS BIGINT`).catch(() => {});
+    console.log('   ✅ IDs convertidos para BIGINT');
     
     console.log('✅ Tabelas criadas/verificadas com sucesso!');
   } catch (error) {

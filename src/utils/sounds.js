@@ -120,19 +120,22 @@ export const createOceanSounds = () => {
 // Som de mensagem normal (onda)
 export const playMessageSound = () => {
   try {
+    console.log('🔊 Tocando som de mensagem...')
     const sounds = createOceanSounds()
     sounds.playWave()
   } catch (e) {
-    console.log('Web Audio API não disponível')
+    console.log('❌ Web Audio API não disponível:', e.message)
   }
 }
 
 // Som de garrafa/barril chegando (splash + ondas)
 export const playBottleSound = () => {
   try {
+    console.log('🔊 Tocando som de garrafa...')
     const sounds = createOceanSounds()
     sounds.playBottle()
+    console.log('✅ Som tocado!')
   } catch (e) {
-    console.log('Web Audio API não disponível')
+    console.log('❌ Web Audio API não disponível:', e.message)
   }
 }

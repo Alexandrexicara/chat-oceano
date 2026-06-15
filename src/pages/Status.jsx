@@ -478,8 +478,9 @@ export function Status() {
           <Card style={{ 
             maxWidth: '500px', 
             margin: '0 auto',
-            maxHeight: '85vh',
+            maxHeight: '90vh',
             overflowY: 'auto',
+            paddingBottom: theme.spacing.xl,
           }}>
             <h2 style={{ marginBottom: theme.spacing.lg }}>Criar Novo Status 🍾</h2>
 
@@ -490,10 +491,10 @@ export function Status() {
                 value={statusForm.text}
                 onChange={e => setStatusForm({ ...statusForm, text: e.target.value })}
                 placeholder="Compartilhe um momento..."
-                rows={8}
+                rows={3}
                 style={{ 
                   fontFamily: theme.fonts.family.base,
-                  minHeight: '200px',
+                  minHeight: '80px',
                   fontSize: theme.fonts.sizes.md,
                 }}
               />

@@ -711,11 +711,14 @@ export function Chat({ oceanoMode }) {
       try {
         // Carregar mensagens REAIS do oceano
         const oceanoMessages = await getOceanoMessages()
+        console.log(`🌊 ${oceanoMessages.length} mensagens do oceano carregadas`)
         setOceanoBottles(oceanoMessages.map(msg => ({
           ...msg,
           sender: msg.sender_id === user?.id ? 'me' : 'them',
           senderName: msg.sender_name || 'Usuário',
-          time: new Date(msg.created_at).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })
+          time: new Date(msg.created_at).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }),
+          mediaType: msg.media_type,  // ← Importante para vídeo → barril
+          mediaUrl: msg.media_url,    // ← URL da mídia
         })))
 
         // Carregar contatos REAIS do banco
@@ -949,7 +952,7 @@ export function Chat({ oceanoMode }) {
         }
         
         setOceanoBottles(prev => [localBottle, ...prev])
-        playMessageSound()
+        playBottleSound() // Som no oceano
       }
     } catch (error) {
       console.error('❌ Erro ao fazer upload:', error)
@@ -1056,7 +1059,7 @@ export function Chat({ oceanoMode }) {
         }
         
         setOceanoBottles(prev => [localBottle, ...prev])
-        playMessageSound()
+        playBottleSound() // Som de garrafa no oceano
       }
     } catch (error) {
       console.error('❌ Erro ao enviar áudio:', error)
@@ -1125,7 +1128,7 @@ export function Chat({ oceanoMode }) {
         }
         
         setOceanoBottles(prev => [localBottle, ...prev])
-        playMessageSound()
+        playBottleSound() // Som de barril no oceano
       }
     } catch (error) {
       console.error('❌ Erro ao enviar vídeo:', error)
@@ -1136,7 +1139,8 @@ export function Chat({ oceanoMode }) {
   // Função para renderizar Bottle ou Barrel
   const renderFloatingItem = (msg, idx) => {
     const pos = bottlePositions[idx % bottlePositions.length]
-    const Component = msg.mediaType === 'video' ? Barrel : Bottle
+    const isVideo = msg.mediaType === 'video' || msg.media_type === 'video'
+    const Component = isVideo ? Barrel : Bottle
     return (
       <div
         key={msg.id}
@@ -1156,7 +1160,7 @@ export function Chat({ oceanoMode }) {
             setSelectedBottle(msg)
             // Mostrar anúncio e dar pontos
             setShowMiniAnuncio(true)
-            if (msg.mediaType === 'video') {
+            if (isVideo) {
               pontuar.videoAssistido()
             } else {
               pontuar.mensagemAberta()
