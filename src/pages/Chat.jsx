@@ -6,7 +6,7 @@ import { MiniAnuncio } from '../components/MiniAnuncio'
 import { useCDCoin, CDCoinDisplay } from '../hooks/useCDCoin'
 import { theme } from '../styles/theme'
 import { playMessageSound, playBottleSound } from '../utils/sounds'
-import { getMessages, sendMessage as sendApiMessage, getOceanoMessages, getContacts } from '../services/api'
+import { getMessages, sendMessage as sendApiMessage, getOceanoMessages, getContacts, uploadFile } from '../services/api'
 import { io } from 'socket.io-client'
 
 // Componente para gravar áudio
@@ -660,6 +660,40 @@ export function Chat({ oceanoMode }) {
   const videoRecorderRef = useRef(null)
   const socketRef = useRef(null)
 
+  // Carregar mensagens do chat quando selecionar um contato
+  useEffect(() => {
+    const loadChatMessages = async () => {
+      if (!selectedChat || !user?.id) return
+      
+      try {
+        console.log(`📥 Carregando mensagens do chat com ${selectedChat.name}...`)
+        const chatMessages = await getMessages(user.id, selectedChat.id)
+        
+        if (chatMessages.length > 0) {
+          const formattedMessages = chatMessages.map(msg => ({
+            id: msg.id,
+            sender: msg.sender_id === user.id ? 'me' : 'them',
+            senderName: msg.sender_id === user.id ? (user.name || 'Você') : selectedChat.name,
+            text: msg.text,
+            time: new Date(msg.created_at).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }),
+            mediaUrl: msg.media_url,
+            mediaType: msg.media_type,
+          }))
+          
+          setMessages(prev => ({
+            ...prev,
+            [selectedChat.id]: formattedMessages,
+          }))
+          console.log(`✅ ${formattedMessages.length} mensagens carregadas!`)
+        }
+      } catch (error) {
+        console.error('❌ Erro ao carregar mensagens do chat:', error)
+      }
+    }
+    
+    loadChatMessages()
+  }, [selectedChat, user])
+
   // Pontuar acesso diário ao entrar no Chat
   useEffect(() => {
     pontuar.acessoDiario()
@@ -832,36 +866,23 @@ export function Chat({ oceanoMode }) {
       playBottleSound()
     } catch (error) {
       console.error('Erro ao enviar mensagem:', error)
-      // Fallback: enviar localmente se API falhar
-      const now = new Date()
-      const timeStr = now.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })
-
-      const newMsg = {
-        id: Date.now(),
-        sender: 'me',
-        senderName: user?.name || 'Você',
-        text: messageText.trim(),
-        time: timeStr,
-      }
-
-      setMessages(prev => ({
-        ...prev,
-        [selectedChat.id]: [...(prev[selectedChat.id] || []), newMsg],
-      }))
-      setMessageText('')
-      playBottleSound()
+      alert('Erro ao enviar mensagem: ' + (error.response?.data?.error || error.message))
     }
   }
 
-  const handleFileUpload = (e) => {
+  const handleFileUpload = async (e) => {
     const file = e.target.files?.[0]
     if (!file) return
-    // Para upload no oceano ou chat
+    
     const targetChat = selectedChat
-
-    const reader = new FileReader()
-    reader.onload = (event) => {
-      const mediaUrl = event.target?.result
+    
+    try {
+      // Upload do arquivo para o servidor
+      console.log('📤 Fazendo upload do arquivo:', file.name)
+      const uploadResult = await uploadFile(file)
+      const mediaUrl = uploadResult.filename ? `/uploads/${uploadResult.filename}` : null
+      console.log('✅ Upload concluído:', mediaUrl)
+      
       const mediaType = file.type.startsWith('image/') ? 'image'
         : file.type.startsWith('video/') ? 'video'
         : file.type.startsWith('audio/') ? 'audio'
@@ -870,21 +891,32 @@ export function Chat({ oceanoMode }) {
       const now = new Date()
       const timeStr = now.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })
 
-      const newMsg = {
-        id: Date.now(),
-        sender: 'me',
-        senderName: user?.name || 'Você',
-        text: mediaType === 'video' ? `🛢️ ${file.name}` : `📎 ${file.name}`,
-        time: timeStr,
-        mediaUrl,
-        mediaType,
-        fileName: file.name,
-      }
-
       if (targetChat) {
+        // Enviar como mensagem no chat
+        const newMsg = {
+          sender_id: user?.id,
+          receiver_id: targetChat.id,
+          text: mediaType === 'video' ? `🛢️ ${file.name}` : `📎 ${file.name}`,
+          media_url: mediaUrl,
+          media_type: mediaType,
+          file_name: file.name,
+        }
+        
+        const savedMessage = await sendApiMessage(newMsg)
+        
+        const localMsg = {
+          id: savedMessage.id,
+          sender: 'me',
+          senderName: user?.name || 'Você',
+          text: mediaType === 'video' ? `🛢️ ${file.name}` : `📎 ${file.name}`,
+          time: timeStr,
+          mediaUrl: mediaUrl,
+          mediaType: mediaType,
+        }
+
         setMessages(prev => ({
           ...prev,
-          [targetChat.id]: [...(prev[targetChat.id] || []), newMsg],
+          [targetChat.id]: [...(prev[targetChat.id] || []), localMsg],
         }))
 
         // Pontuar por enviar mídia
@@ -893,31 +925,36 @@ export function Chat({ oceanoMode }) {
         } else {
           pontuar.mensagemEnviada()
         }
-
-        // Resposta automática
-        setTimeout(() => {
-          const responseTime = new Date()
-          const responseTimeStr = responseTime.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })
-          const response = {
-            id: Date.now() + 1,
-            sender: 'them',
-            senderName: targetChat.name,
-            text: mediaType === 'video' ? '🛢️ Barril recebido! Vou assistir!' : '✅ Arquivo recebido com sucesso! 🍾',
-            time: responseTimeStr,
-          }
-          setMessages(prev => ({
-            ...prev,
-            [targetChat.id]: [...(prev[targetChat.id] || []), response],
-          }))
-          playMessageSound()
-        }, 1000)
       } else {
-        // Upload no oceano
-        setOceanoBottles(prev => [...prev, newMsg])
+        // Enviar para o oceano
+        const newBottle = {
+          sender_id: user?.id,
+          text: mediaType === 'video' ? `🛢️ ${file.name}` : `📎 ${file.name}`,
+          media_url: mediaUrl,
+          media_type: mediaType,
+          file_name: file.name,
+          is_oceano: true,
+        }
+        
+        const savedMessage = await sendApiMessage(newBottle)
+        
+        const localBottle = {
+          id: savedMessage.id,
+          sender: 'me',
+          senderName: user?.name || 'Você',
+          text: mediaType === 'video' ? `🛢️ ${file.name}` : `📎 ${file.name}`,
+          time: timeStr,
+          mediaUrl: mediaUrl,
+          mediaType: mediaType,
+        }
+        
+        setOceanoBottles(prev => [localBottle, ...prev])
         playMessageSound()
       }
+    } catch (error) {
+      console.error('❌ Erro ao fazer upload:', error)
+      alert('Erro ao enviar arquivo: ' + (error.response?.data?.error || error.message))
     }
-    reader.readAsDataURL(file)
 
     // Reset inputs
     if (fileInputRef.current) fileInputRef.current.value = ''
@@ -930,14 +967,10 @@ export function Chat({ oceanoMode }) {
     if (!oceanoText.trim()) return
 
     try {
-      const now = new Date()
-      const timeStr = now.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })
-      
       const newBottle = {
         sender_id: user?.id,
         text: oceanoText.trim(),
         is_oceano: true,
-        time: timeStr,
       }
 
       // Enviar para API
@@ -948,7 +981,7 @@ export function Chat({ oceanoMode }) {
         sender: 'me',
         senderName: user?.name || 'Você',
         text: oceanoText.trim(),
-        time: timeStr,
+        time: new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }),
       }
 
       setOceanoBottles(prev => [localBottle, ...prev])
@@ -958,109 +991,145 @@ export function Chat({ oceanoMode }) {
       playBottleSound()
     } catch (error) {
       console.error('Erro ao enviar garrafa:', error)
-      // Fallback local
-      const now = new Date()
-      const timeStr = now.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })
-      
-      const newBottle = {
-        id: Date.now(),
-        sender: 'me',
-        senderName: user?.name || 'Você',
-        text: oceanoText.trim(),
-        time: timeStr,
-      }
-      
-      setOceanoBottles(prev => [newBottle, ...prev])
-      setOceanoText('')
-      playBottleSound()
+      alert('Erro ao enviar para o oceano: ' + (error.response?.data?.error || error.message))
     }
   }
 
   // Handler para áudio gravado
-  const handleAudioRecording = (recording) => {
-    const now = new Date()
-    const timeStr = now.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })
+  const handleAudioRecording = async (recording) => {
+    try {
+      // Upload do áudio para o servidor
+      console.log('📤 Fazendo upload do áudio...')
+      const response = await fetch(recording.url)
+      const blob = await response.blob()
+      const file = new File([blob], `audio_${user?.id}_${Date.now()}.webm`, { type: blob.type })
+      const uploadResult = await uploadFile(file)
+      const mediaUrl = uploadResult.filename ? `/uploads/${uploadResult.filename}` : recording.url
+      console.log('✅ Áudio enviado:', mediaUrl)
+      
+      const timeStr = new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })
 
-    const newMsg = {
-      id: Date.now(),
-      sender: 'me',
-      senderName: user?.name || 'Você',
-      text: '🎤 Áudio gravado',
-      time: timeStr,
-      mediaUrl: recording.url,
-      mediaType: 'audio',
-      fileName: 'audio_gravado.webm',
-    }
-
-    if (selectedChat) {
-      setMessages(prev => ({
-        ...prev,
-        [selectedChat.id]: [...(prev[selectedChat.id] || []), newMsg],
-      }))
-
-      setTimeout(() => {
-        const responseTime = new Date()
-        const responseTimeStr = responseTime.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })
-        const response = {
-          id: Date.now() + 1,
-          sender: 'them',
-          senderName: selectedChat.name,
-          text: '🎵 Áudio recebido! Vou ouvir!',
-          time: responseTimeStr,
+      if (selectedChat) {
+        // Enviar como mensagem no chat
+        const savedMessage = await sendApiMessage({
+          sender_id: user?.id,
+          receiver_id: selectedChat.id,
+          text: '🎤 Áudio gravado',
+          media_url: mediaUrl,
+          media_type: 'audio',
+          file_name: 'audio_gravado.webm',
+        })
+        
+        const localMsg = {
+          id: savedMessage.id,
+          sender: 'me',
+          senderName: user?.name || 'Você',
+          text: '🎤 Áudio gravado',
+          time: timeStr,
+          mediaUrl: mediaUrl,
+          mediaType: 'audio',
         }
+        
         setMessages(prev => ({
           ...prev,
-          [selectedChat.id]: [...(prev[selectedChat.id] || []), response],
+          [selectedChat.id]: [...(prev[selectedChat.id] || []), localMsg],
         }))
+      } else {
+        // Enviar para o oceano
+        const savedMessage = await sendApiMessage({
+          sender_id: user?.id,
+          text: '🎤 Áudio gravado',
+          media_url: mediaUrl,
+          media_type: 'audio',
+          file_name: 'audio_gravado.webm',
+          is_oceano: true,
+        })
+        
+        const localBottle = {
+          id: savedMessage.id,
+          sender: 'me',
+          senderName: user?.name || 'Você',
+          text: '🎤 Áudio gravado',
+          time: timeStr,
+          mediaUrl: mediaUrl,
+          mediaType: 'audio',
+        }
+        
+        setOceanoBottles(prev => [localBottle, ...prev])
         playMessageSound()
-      }, 1000)
-    } else {
-      setOceanoBottles(prev => [...prev, newMsg])
-      playMessageSound()
+      }
+    } catch (error) {
+      console.error('❌ Erro ao enviar áudio:', error)
+      alert('Erro ao enviar áudio: ' + (error.response?.data?.error || error.message))
     }
   }
 
   // Handler para vídeo gravado
-  const handleVideoRecording = (recording) => {
-    const now = new Date()
-    const timeStr = now.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })
+  const handleVideoRecording = async (recording) => {
+    try {
+      // Upload do vídeo para o servidor
+      console.log('📤 Fazendo upload do vídeo...')
+      const response = await fetch(recording.url)
+      const blob = await response.blob()
+      const file = new File([blob], `video_${user?.id}_${Date.now()}.webm`, { type: blob.type })
+      const uploadResult = await uploadFile(file)
+      const mediaUrl = uploadResult.filename ? `/uploads/${uploadResult.filename}` : recording.url
+      console.log('✅ Vídeo enviado:', mediaUrl)
+      
+      const timeStr = new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })
 
-    const newMsg = {
-      id: Date.now(),
-      sender: 'me',
-      senderName: user?.name || 'Você',
-      text: '🎥 Vídeo gravado',
-      time: timeStr,
-      mediaUrl: recording.url,
-      mediaType: 'video',
-      fileName: 'video_gravado.webm',
-    }
-
-    if (selectedChat) {
-      setMessages(prev => ({
-        ...prev,
-        [selectedChat.id]: [...(prev[selectedChat.id] || []), newMsg],
-      }))
-
-      setTimeout(() => {
-        const responseTime = new Date()
-        const responseTimeStr = responseTime.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })
-        const response = {
-          id: Date.now() + 1,
-          sender: 'them',
-          senderName: selectedChat.name,
-          text: '🛢️ Vídeo recebido! Vou assistir!',
-          time: responseTimeStr,
+      if (selectedChat) {
+        // Enviar como mensagem no chat
+        const savedMessage = await sendApiMessage({
+          sender_id: user?.id,
+          receiver_id: selectedChat.id,
+          text: '🎥 Vídeo gravado',
+          media_url: mediaUrl,
+          media_type: 'video',
+          file_name: 'video_gravado.webm',
+        })
+        
+        const localMsg = {
+          id: savedMessage.id,
+          sender: 'me',
+          senderName: user?.name || 'Você',
+          text: '🎥 Vídeo gravado',
+          time: timeStr,
+          mediaUrl: mediaUrl,
+          mediaType: 'video',
         }
+        
         setMessages(prev => ({
           ...prev,
-          [selectedChat.id]: [...(prev[selectedChat.id] || []), response],
+          [selectedChat.id]: [...(prev[selectedChat.id] || []), localMsg],
         }))
+      } else {
+        // Enviar para o oceano
+        const savedMessage = await sendApiMessage({
+          sender_id: user?.id,
+          text: '🎥 Vídeo gravado',
+          media_url: mediaUrl,
+          media_type: 'video',
+          file_name: 'video_gravado.webm',
+          is_oceano: true,
+        })
+        
+        const localBottle = {
+          id: savedMessage.id,
+          sender: 'me',
+          senderName: user?.name || 'Você',
+          text: '🎥 Vídeo gravado',
+          time: timeStr,
+          mediaUrl: mediaUrl,
+          mediaType: 'video',
+        }
+        
+        setOceanoBottles(prev => [localBottle, ...prev])
         playMessageSound()
-      }, 1000)
-    } else {
-      setOceanoBottles(prev => [...prev, newMsg])
-      playMessageSound()
+      }
+    } catch (error) {
+      console.error('❌ Erro ao enviar vídeo:', error)
+      alert('Erro ao enviar vídeo: ' + (error.response?.data?.error || error.message))
     }
   }
 

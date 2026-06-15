@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import { useAuth } from '../context/AuthContext'
 import { Button, Card, Input } from './BaseComponents'
 import { theme } from '../styles/theme'
-import { findUsersByPhones, sendWhatsAppInvite } from '../services/api'
+import { findUsersByPhones, sendWhatsAppInvite, addContact } from '../services/api'
 
 // Componente para sincronizar contatos do WhatsApp
 export function WhatsAppSync({ onClose }) {
@@ -51,6 +51,20 @@ export function WhatsAppSync({ onClose }) {
         }
       })
       
+      // SALVAR CONTATOS ENCONTRADOS NO BANCO DE DADOS
+      let contatosSalvos = 0
+      for (const oceanosUser of oceanosUsersList) {
+        try {
+          console.log(`💾 Salvando contato: ${oceanosUser.name} (${oceanosUser.id})`)
+          await addContact(user.id, oceanosUser.id)
+          contatosSalvos++
+          console.log(`✅ Contato salvo com sucesso!`)
+        } catch (error) {
+          // Pode dar erro de duplicação, ignora
+          console.log(`⚠️ Contato já existe ou erro:`, error.message)
+        }
+      }
+      
       setOceanosUsers(oceanosUsersList)
       setNonUsers(nonUsersList)
       
@@ -65,15 +79,25 @@ export function WhatsAppSync({ onClose }) {
       let mensagem = `📊 Resultado da Sincronização:\n\n`
       mensagem += `📱 Total de contatos: ${total}\n`
       mensagem += `✅ No Oceanos: ${encontrados}\n`
+      mensagem += `💾 Salvos no banco: ${contatosSalvos}\n`
       mensagem += `📲 Não encontrados: ${naoEncontrados}\n\n`
       
       if (encontrados > 0) {
-        mensagem += `🎉 Você tem ${encontrados} amigo(s) no Oceanos!`
+        mensagem += `🎉 Você tem ${encontrados} amigo(s) no Oceanos!\n\n`
+        mensagem += `👆 Agora eles aparecem na sua lista de contatos!`
       } else {
         mensagem += `👆 Nenhum amigo encontrado. Convide-os para entrar!`
       }
       
       alert(mensagem)
+      
+      // Fechar o modal e recarregar contatos do Chat
+      if (contatosSalvos > 0) {
+        setTimeout(() => {
+          onClose()
+          window.location.reload() // Recarrega para atualizar lista de contatos
+        }, 1500)
+      }
     } catch (error) {
       console.error('Erro ao sincronizar:', error)
       alert('Erro ao sincronizar contatos. Tente novamente.')
@@ -257,7 +281,9 @@ export function WhatsAppSync({ onClose }) {
                 <Button 
                   variant="primary" 
                   onClick={() => {
-                    alert('💬 Em breve você poderá conversar com este contato!')
+                    alert(`✅ ${user.name} foi adicionado aos seus contatos!\n\nAgora você pode conversar com ele pelo Chat.`)
+                    onClose() // Fecha o modal
+                    window.location.reload() // Recarrega para mostrar o contato
                   }}
                   style={{ 
                     padding: `${theme.spacing.md} ${theme.spacing.lg}`,

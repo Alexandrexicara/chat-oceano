@@ -369,14 +369,28 @@ app.post('/api/users/find-by-phones', async (req, res) => {
   }
 });
 
-// Adicionar contato
+// Adicionar contato (com verificação de duplicata)
 app.post('/api/contacts', async (req, res) => {
   const { user_id, contact_id } = req.body;
   try {
+    // Verificar se contato já existe
+    const checkResult = await pool.query(
+      'SELECT id FROM contacts WHERE user_id = $1::bigint AND contact_id = $2::bigint',
+      [user_id, contact_id]
+    );
+    
+    if (checkResult.rows.length > 0) {
+      // Contato já existe, retorna sucesso sem duplicar
+      console.log(`✅ Contato já existe: ${user_id} -> ${contact_id}`);
+      return res.json({ message: 'Contato já existe', id: checkResult.rows[0].id });
+    }
+    
+    // Adicionar novo contato
     const result = await pool.query(
       'INSERT INTO contacts (user_id, contact_id) VALUES ($1::bigint, $2::bigint) RETURNING *',
       [user_id, contact_id]
     );
+    console.log(`✅ Novo contato adicionado: ${user_id} -> ${contact_id}`);
     res.status(201).json(result.rows[0]);
   } catch (error) {
     console.error('❌ Erro ao adicionar contato:', error.message);
