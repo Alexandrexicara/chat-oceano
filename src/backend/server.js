@@ -60,8 +60,8 @@ if (dbUrl) {
   console.log(`   Host: ${hostPart}`);
   console.log(`   Database: ${dbUrl.split('/').pop() || 'N/A'}`);
   
-  // Verificar se o hostname está completo
-  if (!hostPart.includes('.') || !hostPart.endsWith('.render.com')) {
+  // Verificar se o hostname parece incompleto (apenas para Render)
+  if (hostPart.includes('render.com') && !hostPart.endsWith('.render.com')) {
     console.log('   ⚠️ ATENÇÃO: Hostname parece incompleto!');
     console.log('   O hostname deve terminar com .render.com');
     console.log('   Exemplo correto: dpg-xxx.ohio-postgres.render.com');
@@ -489,8 +489,10 @@ async function initializeDatabase() {
     console.log('✅ Conexão estabelecida com PostgreSQL!');
     client.release();
 
-    // Criar tabelas
+    // Criar tabelas SEQUENCIALMENTE para evitar deadlock
     console.log('🔄 Criando/verificando tabelas...');
+    
+    // 1. Criar tabela users
     await pool.query(`
       CREATE TABLE IF NOT EXISTS users (
         id SERIAL PRIMARY KEY,
@@ -504,43 +506,55 @@ async function initializeDatabase() {
         avatar VARCHAR(255),
         status VARCHAR(20) DEFAULT 'Online',
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-      );
-
-      -- Adicionar colunas que podem estar faltando em tabelas existentes
-      ALTER TABLE users ADD COLUMN IF NOT EXISTS phone VARCHAR(30);
-      ALTER TABLE users ADD COLUMN IF NOT EXISTS bio TEXT;
-      ALTER TABLE users ADD COLUMN IF NOT EXISTS city VARCHAR(100);
-      ALTER TABLE users ADD COLUMN IF NOT EXISTS country VARCHAR(10);
-      ALTER TABLE users ADD COLUMN IF NOT EXISTS language VARCHAR(10) DEFAULT 'pt-BR';
-      ALTER TABLE users ADD COLUMN IF NOT EXISTS avatar VARCHAR(255);
-      ALTER TABLE users ADD COLUMN IF NOT EXISTS status VARCHAR(20) DEFAULT 'Online';
-      ALTER TABLE users ADD COLUMN IF NOT EXISTS created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP;
-
+      )
+    `);
+    console.log('   ✅ Tabela users OK');
+    
+    // 2. Adicionar colunas que podem estar faltando
+    await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS phone VARCHAR(30)`).catch(() => {});
+    await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS bio TEXT`).catch(() => {});
+    await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS city VARCHAR(100)`).catch(() => {});
+    await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS country VARCHAR(10)`).catch(() => {});
+    await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS language VARCHAR(10) DEFAULT 'pt-BR'`).catch(() => {});
+    await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS avatar VARCHAR(255)`).catch(() => {});
+    await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS status VARCHAR(20) DEFAULT 'Online'`).catch(() => {});
+    await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP`).catch(() => {});
+    console.log('   ✅ Colunas users OK');
+    
+    // 3. Criar tabela messages
+    await pool.query(`
       CREATE TABLE IF NOT EXISTS messages (
         id SERIAL PRIMARY KEY,
-        sender_id INTEGER REFERENCES users(id),
-        receiver_id INTEGER REFERENCES users(id),
+        sender_id BIGINT REFERENCES users(id),
+        receiver_id BIGINT REFERENCES users(id),
         text TEXT,
         media_url VARCHAR(500),
         media_type VARCHAR(50),
         file_name VARCHAR(255),
         is_oceano BOOLEAN DEFAULT false,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-      );
-
+      )
+    `);
+    console.log('   ✅ Tabela messages OK');
+    
+    // 4. Criar tabela contacts
+    await pool.query(`
       CREATE TABLE IF NOT EXISTS contacts (
         id SERIAL PRIMARY KEY,
-        user_id INTEGER REFERENCES users(id),
-        contact_id INTEGER REFERENCES users(id),
+        user_id BIGINT REFERENCES users(id),
+        contact_id BIGINT REFERENCES users(id),
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         UNIQUE(user_id, contact_id)
-      );
-
-      CREATE INDEX IF NOT EXISTS idx_messages_sender ON messages(sender_id);
-      CREATE INDEX IF NOT EXISTS idx_messages_receiver ON messages(receiver_id);
-      CREATE INDEX IF NOT EXISTS idx_messages_oceano ON messages(is_oceano);
-      CREATE INDEX IF NOT EXISTS idx_contacts_user ON contacts(user_id);
+      )
     `);
+    console.log('   ✅ Tabela contacts OK');
+    
+    // 5. Criar índices
+    await pool.query(`CREATE INDEX IF NOT EXISTS idx_messages_sender ON messages(sender_id)`).catch(() => {});
+    await pool.query(`CREATE INDEX IF NOT EXISTS idx_messages_receiver ON messages(receiver_id)`).catch(() => {});
+    await pool.query(`CREATE INDEX IF NOT EXISTS idx_messages_oceano ON messages(is_oceano)`).catch(() => {});
+    await pool.query(`CREATE INDEX IF NOT EXISTS idx_contacts_user ON contacts(user_id)`).catch(() => {});
+    console.log('   ✅ Índices OK');
     
     console.log('✅ Tabelas criadas/verificadas com sucesso!');
   } catch (error) {

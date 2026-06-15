@@ -8,7 +8,7 @@
     "dev:backend": "node src/backend/server.js",
     "dev:all": "concurrently \"npm run dev\" \"npm run dev:backend\"",
     "build": "vite build",
-    "start": "node src/backend/server.js",
+    "start": "node --no-warnings src/backend/server.js",
     "lint": "eslint .",
     "preview": "vite preview",
     "db:init": "node src/backend/init-db.js"
