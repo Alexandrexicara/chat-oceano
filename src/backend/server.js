@@ -17,14 +17,24 @@ const app = express();
 const server = createServer(app);
 const io = new Server(server, {
   cors: {
-    origin: ["http://localhost:5173", "http://localhost:5174", "http://localhost:5175"],
+    origin: [
+      "http://localhost:5173", 
+      "http://localhost:5174", 
+      "http://localhost:5175",
+      "https://chat-oceano.onrender.com"
+    ],
     methods: ["GET", "POST"]
   }
 });
 
 // Middleware
 app.use(cors({
-  origin: ["http://localhost:5173", "http://localhost:5174", "http://localhost:5175"],
+  origin: [
+    "http://localhost:5173", 
+    "http://localhost:5174", 
+    "http://localhost:5175",
+    "https://chat-oceano.onrender.com"
+  ],
   credentials: true
 }));
 app.use(express.json());
@@ -46,8 +56,20 @@ console.log('🔧 Configuração do Banco:');
 const dbUrl = process.env.DATABASE_URL || process.env.Database_Url;
 if (dbUrl) {
   console.log('   DATABASE_URL: ✅ definida');
-  console.log(`   Host: ${dbUrl.split('@')[1]?.split('/')[0] || 'N/A'}`);
+  const hostPart = dbUrl.split('@')[1]?.split('/')[0] || 'N/A';
+  console.log(`   Host: ${hostPart}`);
   console.log(`   Database: ${dbUrl.split('/').pop() || 'N/A'}`);
+  
+  // Verificar se o hostname está completo
+  if (!hostPart.includes('.') || !hostPart.endsWith('.render.com')) {
+    console.log('   ⚠️ ATENÇÃO: Hostname parece incompleto!');
+    console.log('   O hostname deve terminar com .render.com');
+    console.log('   Exemplo correto: dpg-xxx.ohio-postgres.render.com');
+    console.log('   Verifique a variável DATABASE_URL no painel do Render.');
+    console.log('   Vá em: Settings → Environment Variables → DATABASE_URL');
+  }
+  
+  console.log('   📋 Formato: postgres://user:pass@host.region.render.com:port/dbname');
 } else {
   console.log('   ⚠️ DATABASE_URL NÃO DEFINIDA!');
   console.log(`   DB_HOST: ${process.env.DB_HOST || 'NÃO DEFINIDO'}`);
