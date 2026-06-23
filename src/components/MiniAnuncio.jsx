@@ -149,7 +149,7 @@ export function MiniAnuncio({ onClose }) {
 
         <button
           onClick={() => {
-            alert('Redirecionando para o anúncio...')
+            window.open('https://omg10.com/4/9241934', '_blank')
             onClose()
           }}
           style={{

@@ -3,6 +3,7 @@ import { useAuth } from '../context/AuthContext'
 import { Header, Button, Input, Badge } from '../components/BaseComponents'
 import { WhatsAppSync } from '../components/WhatsAppSync'
 import { MiniAnuncio } from '../components/MiniAnuncio'
+import { ExoclickAd } from '../components/ExoclickAd'
 import { useCDCoin, CDCoinDisplay } from '../hooks/useCDCoin'
 import { theme } from '../styles/theme'
 import { playMessageSound, playBottleSound } from '../utils/sounds'
@@ -280,23 +281,59 @@ function VideoRecorder({ onRecordingComplete }) {
 }
 
 // Componente Garrafa Visual - HORIZONTAL (boiando no mar)
-function Bottle({ message, onClick, index }) {
+function Bottle({ message, onClick, index, isOpened, onDragAway }) {
   const isOwn = message.sender === 'me'
   // Rotação leve para simular boiando na água
   const tilt = -15 + (index % 5) * 8 // entre -15 e +17 graus
+  const [isDragging, setIsDragging] = useState(false)
+  const [dragStartX, setDragStartX] = useState(0)
+
+  const handleMouseDown = (e) => {
+    if (e.button === 0) { // Left click only
+      setIsDragging(true)
+      setDragStartX(e.clientX)
+    }
+  }
+
+  const handleMouseMove = (e) => {
+    if (isDragging) {
+      const deltaX = e.clientX - dragStartX
+      // Drag threshold to trigger removal
+      if (Math.abs(deltaX) > 100) {
+        onDragAway && onDragAway(message.id)
+        setIsDragging(false)
+      }
+    }
+  }
+
+  const handleMouseUp = () => {
+    setIsDragging(false)
+  }
+
+  useEffect(() => {
+    if (isDragging) {
+      window.addEventListener('mousemove', handleMouseMove)
+      window.addEventListener('mouseup', handleMouseUp)
+      return () => {
+        window.removeEventListener('mousemove', handleMouseMove)
+        window.removeEventListener('mouseup', handleMouseUp)
+      }
+    }
+  }, [isDragging, dragStartX])
 
   return (
     <div
       onClick={onClick}
+      onMouseDown={handleMouseDown}
       style={{
-        cursor: 'pointer',
+        cursor: isDragging ? 'grabbing' : 'grab',
         display: 'flex',
         flexDirection: 'column',
         alignItems: 'center',
-        transition: 'transform 0.3s ease',
+        transition: isDragging ? 'none' : 'transform 0.3s ease',
       }}
-      onMouseEnter={e => { e.currentTarget.style.transform = 'scale(1.15)' }}
-      onMouseLeave={e => { e.currentTarget.style.transform = 'scale(1)' }}
+      onMouseEnter={e => { if (!isDragging) e.currentTarget.style.transform = 'scale(1.15)' }}
+      onMouseLeave={e => { if (!isDragging) e.currentTarget.style.transform = 'scale(1)' }}
     >
       {/* Garrafa deitada (horizontal) */}
       <div
@@ -309,6 +346,21 @@ function Bottle({ message, onClick, index }) {
           transform: `rotate(${tilt}deg)`,
         }}
       >
+        {/* Marcador de estado (bolinha verde/vermelha) */}
+        <div style={{
+          position: 'absolute',
+          top: '-8px',
+          left: '50%',
+          transform: 'translateX(-50%)',
+          width: '14px',
+          height: '14px',
+          borderRadius: '50%',
+          background: isOpened ? '#ff4444' : '#4ade80',
+          border: '2px solid white',
+          boxShadow: '0 2px 4px rgba(0,0,0,0.3)',
+          zIndex: 10,
+        }} />
+        
         {/* Corpo da garrafa (horizontal) */}
         <div
           style={{
@@ -364,30 +416,66 @@ function Bottle({ message, onClick, index }) {
         {isOwn ? 'Você' : message.senderName}
       </p>
       <p style={{ fontSize: '10px', color: theme.colors.secondary, marginTop: '2px' }}>
-        Clique para abrir
+        {isOpened ? 'Aberto' : 'Clique para abrir'}
       </p>
     </div>
   )
 }
 
 // Componente Barril de Madeira - para vídeos (Estilo Pirata com Imagem)
-function Barrel({ message, onClick, index }) {
+function Barrel({ message, onClick, index, isOpened, onDragAway }) {
   const isOwn = message.sender === 'me'
   // Rotação leve para simular boiando na água (horizontal)
   const tilt = -15 + (index % 5) * 8 // entre -15 e +17 graus
+  const [isDragging, setIsDragging] = useState(false)
+  const [dragStartX, setDragStartX] = useState(0)
+
+  const handleMouseDown = (e) => {
+    if (e.button === 0) { // Left click only
+      setIsDragging(true)
+      setDragStartX(e.clientX)
+    }
+  }
+
+  const handleMouseMove = (e) => {
+    if (isDragging) {
+      const deltaX = e.clientX - dragStartX
+      // Drag threshold to trigger removal
+      if (Math.abs(deltaX) > 100) {
+        onDragAway && onDragAway(message.id)
+        setIsDragging(false)
+      }
+    }
+  }
+
+  const handleMouseUp = () => {
+    setIsDragging(false)
+  }
+
+  useEffect(() => {
+    if (isDragging) {
+      window.addEventListener('mousemove', handleMouseMove)
+      window.addEventListener('mouseup', handleMouseUp)
+      return () => {
+        window.removeEventListener('mousemove', handleMouseMove)
+        window.removeEventListener('mouseup', handleMouseUp)
+      }
+    }
+  }, [isDragging, dragStartX])
 
   return (
     <div
       onClick={onClick}
+      onMouseDown={handleMouseDown}
       style={{
-        cursor: 'pointer',
+        cursor: isDragging ? 'grabbing' : 'grab',
         display: 'flex',
         flexDirection: 'column',
         alignItems: 'center',
-        transition: 'transform 0.3s ease',
+        transition: isDragging ? 'none' : 'transform 0.3s ease',
       }}
-      onMouseEnter={e => { e.currentTarget.style.transform = 'scale(1.15)' }}
-      onMouseLeave={e => { e.currentTarget.style.transform = 'scale(1)' }}
+      onMouseEnter={e => { if (!isDragging) e.currentTarget.style.transform = 'scale(1.15)' }}
+      onMouseLeave={e => { if (!isDragging) e.currentTarget.style.transform = 'scale(1)' }}
     >
       {/* Barril deitado (horizontal) */}
       <div
@@ -400,6 +488,20 @@ function Barrel({ message, onClick, index }) {
           transform: `rotate(${tilt}deg)`,
         }}
       >
+        {/* Marcador de estado (bolinha verde/vermelha) */}
+        <div style={{
+          position: 'absolute',
+          top: '-8px',
+          left: '50%',
+          transform: 'translateX(-50%)',
+          width: '14px',
+          height: '14px',
+          borderRadius: '50%',
+          background: isOpened ? '#ff4444' : '#4ade80',
+          border: '2px solid white',
+          boxShadow: '0 2px 4px rgba(0,0,0,0.3)',
+          zIndex: 10,
+        }} />
         {/* Corpo do barril - CSS puro (funciona sem imagem) */}
         <div style={{
           width: '100%',
@@ -564,6 +666,9 @@ function BottleModal({ message, onClose }) {
           </p>
         </div>
 
+        {/* Anúncio Exoclick */}
+        <ExoclickAd />
+
         {/* Conteúdo */}
         <div style={{
           background: isBarrel ? 'rgba(0,0,0,0.4)' : theme.colors.background,
@@ -652,6 +757,7 @@ export function Chat({ oceanoMode }) {
   const [loading, setLoading] = useState(true)
   const [showWhatsAppSync, setShowWhatsAppSync] = useState(false)
   const [showMiniAnuncio, setShowMiniAnuncio] = useState(false)
+  const [openedBottles, setOpenedBottles] = useState(new Set()) // Track opened bottles
   const { saldo, pontuar, adicionarPontos } = useCDCoin()
   const messagesEndRef = useRef(null)
   const fileInputRef = useRef(null)
@@ -1136,6 +1242,16 @@ export function Chat({ oceanoMode }) {
     }
   }
 
+  // Handler para remover garrafa ao arrastar para o lado
+  const handleDragAway = (bottleId) => {
+    setOceanoBottles(prev => prev.filter(bottle => bottle.id !== bottleId))
+    setOpenedBottles(prev => {
+      const newSet = new Set(prev)
+      newSet.delete(bottleId)
+      return newSet
+    })
+  }
+
   // Função para renderizar Bottle ou Barrel
   const renderFloatingItem = (msg, idx) => {
     const pos = bottlePositions[idx % bottlePositions.length]
@@ -1156,8 +1272,12 @@ export function Chat({ oceanoMode }) {
         <Component
           message={msg}
           index={idx}
+          isOpened={openedBottles.has(msg.id)}
+          onDragAway={handleDragAway}
           onClick={() => {
             setSelectedBottle(msg)
+            // Marcar como aberto
+            setOpenedBottles(prev => new Set([...prev, msg.id]))
             // Mostrar anúncio e dar pontos
             setShowMiniAnuncio(true)
             if (isVideo) {

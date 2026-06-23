@@ -106,6 +106,26 @@ export function ExoclickAd() {
         }}
       />
       
+      {/* Link alternativo para o anúncio */}
+      <a 
+        href="https://omg10.com/4/9241934" 
+        target="_blank" 
+        rel="noopener noreferrer"
+        style={{
+          position: 'absolute',
+          top: '0',
+          left: '0',
+          right: '0',
+          bottom: '0',
+          zIndex: 4,
+          cursor: 'pointer',
+        }}
+        onClick={(e) => {
+          e.preventDefault()
+          window.open('https://omg10.com/4/9241934', '_blank')
+        }}
+      />
+      
       {/* Botão para fechar o anúncio (aparece após 5 segundos) */}
       {showCloseButton && (
         <button

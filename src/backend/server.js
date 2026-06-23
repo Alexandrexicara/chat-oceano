@@ -39,6 +39,7 @@ app.use(cors({
 }));
 app.use(express.json());
 app.use('/uploads', express.static(path.join(__dirname, '../public/uploads')));
+app.use('/uploads', express.static(path.join(__dirname, '../../dist/uploads')));
 
 // Servir arquivos estáticos do frontend em produção
 const frontendPath = path.join(__dirname, '../../dist');
@@ -99,20 +100,20 @@ async function migrateToBigint() {
       ALTER TABLE messages 
       ALTER COLUMN sender_id TYPE bigint,
       ALTER COLUMN receiver_id TYPE bigint
-    `).catch(e => console.log('   messages: já está bigint'));
+    `).catch(() => console.log('   messages: já está bigint'));
     
     // Alterar colunas da tabela contacts
     await pool.query(`
       ALTER TABLE contacts 
       ALTER COLUMN user_id TYPE bigint,
       ALTER COLUMN contact_id TYPE bigint
-    `).catch(e => console.log('   contacts: já está bigint'));
+    `).catch(() => console.log('   contacts: já está bigint'));
     
     // Alterar coluna da tabela users
     await pool.query(`
       ALTER TABLE users 
       ALTER COLUMN id TYPE bigint
-    `).catch(e => console.log('   users: já está bigint'));
+    `).catch(() => console.log('   users: já está bigint'));
     
     console.log('✅ Migração concluída!');
   } catch (error) {
@@ -151,7 +152,7 @@ app.post('/api/upload', upload.single('file'), (req, res) => {
 
 // Login ou criar usuário
 app.post('/api/auth/login', async (req, res) => {
-  const { username, name, phone, city, country, language } = req.body;
+  const { username, name, phone, city, country, language, inviter_id } = req.body;
   try {
     // Tentar encontrar usuário
     let result = await pool.query('SELECT * FROM users WHERE username = $1', [username]);
@@ -162,6 +163,28 @@ app.post('/api/auth/login', async (req, res) => {
         'INSERT INTO users (name, username, phone, bio, city, country, language) VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING *',
         [name || username, username, phone || null, 'Novo no Oceanos 🌊', city || null, country || 'BR', language || 'pt-BR']
       );
+      
+      // Se foi convidado, adicionar automaticamente como contato do convidador
+      if (inviter_id) {
+        try {
+          const inviterId = Number(inviter_id);
+          const newUserId = result.rows[0].id;
+          
+          // Adicionar contato bidirecional
+          await pool.query(
+            'INSERT INTO contacts (user_id, contact_id) VALUES ($1, $2) ON CONFLICT DO NOTHING',
+            [inviterId, newUserId]
+          );
+          await pool.query(
+            'INSERT INTO contacts (user_id, contact_id) VALUES ($1, $2) ON CONFLICT DO NOTHING',
+            [newUserId, inviterId]
+          );
+          
+          console.log(`✅ Contato automático criado: ${inviterId} <-> ${newUserId}`);
+        } catch (contactError) {
+          console.error('⚠️ Erro ao criar contato automático:', contactError.message);
+        }
+      }
     } else {
       // Atualizar campos se não tiver
       const updates = [];
@@ -329,8 +352,12 @@ app.post('/api/messages', async (req, res) => {
 // Buscar mensagens do oceano (públicas) - DEVE vir antes de /:userId1/:userId2
 app.get('/api/messages/oceano', async (req, res) => {
   try {
+    // Status ficam visiveis por 7 dias (168 horas)
     const result = await pool.query(
-      'SELECT * FROM messages WHERE is_oceano = true ORDER BY created_at DESC LIMIT 100'
+      `SELECT * FROM messages 
+       WHERE is_oceano = true 
+       AND created_at > NOW() - INTERVAL '7 days'
+       ORDER BY created_at DESC LIMIT 100`
     );
     res.json(result.rows);
   } catch (error) {

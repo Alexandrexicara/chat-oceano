@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useAuth } from '../context/AuthContext'
 import { Container, Card, Button, Input } from '../components/BaseComponents'
 import { OceanosTutorial } from '../components/OceanosTutorial'
@@ -10,6 +10,7 @@ import { countries, brazilianCities, languages, getDDDByCity } from '../utils/lo
 export function Auth() {
   const [mode, setMode] = useState('login') // login ou register
   const [showTutorial, setShowTutorial] = useState(false)
+  const [inviterId, setInviterId] = useState(null)
   const [formData, setFormData] = useState({
     email: '',
     password: '',
@@ -22,6 +23,16 @@ export function Auth() {
   })
   const { login, register } = useAuth()
   const { adicionarPontos } = useCDCoin()
+
+  // Check for inviter_id in URL
+  useEffect(() => {
+    const urlParams = new URLSearchParams(window.location.search)
+    const inviterIdParam = urlParams.get('inviter_id')
+    if (inviterIdParam) {
+      setInviterId(inviterIdParam)
+      setMode('register') // Auto-switch to register mode
+    }
+  }, [])
 
   const selectedCountry = countries.find(c => c.code === formData.country) || countries[0]
   
@@ -72,6 +83,7 @@ export function Auth() {
         country: formData.country,
         city: formData.city,
         language: formData.language,
+        inviter_id: inviterId, // Pass inviter_id if present
       }).then(() => {
         adicionarPontos(50, '🎉 Cadastro realizado!')
       })
