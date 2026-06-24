@@ -1278,8 +1278,9 @@ export function Chat({ oceanoMode }) {
             setSelectedBottle(msg)
             // Marcar como aberto
             setOpenedBottles(prev => new Set([...prev, msg.id]))
-            // Mostrar anúncio e dar pontos
+            // Mostrar anúncio automaticamente ao abrir garrafa/barril
             setShowMiniAnuncio(true)
+            // Dar pontos ao abrir
             if (isVideo) {
               pontuar.videoAssistido()
             } else {
@@ -1407,7 +1408,7 @@ export function Chat({ oceanoMode }) {
         </Header>
         <OceanView bottles={oceanoBottles} showInput />
         
-        {/* Mini-anuncio no Oceano */}
+        {/* Mini-anúncio ao abrir garrafa/barril */}
         {showMiniAnuncio && (
           <MiniAnuncio onClose={() => {
             setShowMiniAnuncio(false)
@@ -1418,7 +1419,8 @@ export function Chat({ oceanoMode }) {
         {selectedBottle && (
           <BottleModal message={selectedBottle} onClose={() => {
             setSelectedBottle(null)
-            // Pontuar ao fechar modal
+            // Pontuar ao fechar modal (após assistir anúncio)
+            pontuar.anuncioAssistido()
             if (selectedBottle.mediaType === 'video') {
               pontuar.oceanoParticipou()
             }

@@ -47,7 +47,8 @@ app.use(express.static(frontendPath));
 
 // Pool de conexão com PostgreSQL
 const pool = new Pool({
-  connectionString: process.env.DATABASE_URL || process.env.Database_Url,
+  connectionString: process.env.DATABASE_URL || process.env.Database_Url || 
+    `postgres://${process.env.DB_USER}:${process.env.DB_PASSWORD}@${process.env.DB_HOST}:${process.env.DB_PORT}/${process.env.DB_NAME}`,
   ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false,
   connectionTimeoutMillis: 10000, // 10 segundos timeout
 });
@@ -72,7 +73,7 @@ if (dbUrl) {
   
   console.log('   📋 Formato: postgres://user:pass@host.region.render.com:port/dbname');
 } else {
-  console.log('   ⚠️ DATABASE_URL NÃO DEFINIDA!');
+  console.log('   ✅ Usando variáveis individuais do .env');
   console.log(`   DB_HOST: ${process.env.DB_HOST || 'NÃO DEFINIDO'}`);
   console.log(`   DB_PORT: ${process.env.DB_PORT || 'NÃO DEFINIDO'}`);
   console.log(`   DB_NAME: ${process.env.DB_NAME || 'NÃO DEFINIDO'}`);
