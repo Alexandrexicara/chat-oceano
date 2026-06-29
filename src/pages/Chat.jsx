@@ -1,13 +1,12 @@
-import { useState, useRef, useEffect, useMemo } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import { useAuth } from '../context/AuthContext'
 import { Header, Button, Input, Badge } from '../components/BaseComponents'
 import { WhatsAppSync } from '../components/WhatsAppSync'
-import { MiniAnuncio } from '../components/MiniAnuncio'
-import { ExoclickAd } from '../components/ExoclickAd'
+// REMOVIDO: MiniAnuncio e ExoclickAd - oceano agora é apenas na página Status
 import { useCDCoin, CDCoinDisplay } from '../hooks/useCDCoin'
 import { theme } from '../styles/theme'
 import { playMessageSound, playBottleSound } from '../utils/sounds'
-import { getMessages, sendMessage as sendApiMessage, getOceanoMessages, getContacts, uploadFile } from '../services/api'
+import { getMessages, sendMessage as sendApiMessage, getContacts, uploadFile } from '../services/api'
 import { io } from 'socket.io-client'
 
 // Componente para gravar áudio
@@ -280,454 +279,7 @@ function VideoRecorder({ onRecordingComplete }) {
   )
 }
 
-// Componente Garrafa Visual - HORIZONTAL (boiando no mar)
-function Bottle({ message, onClick, index, isOpened, onDragAway }) {
-  const isOwn = message.sender === 'me'
-  // Rotação leve para simular boiando na água
-  const tilt = -15 + (index % 5) * 8 // entre -15 e +17 graus
-  const [isDragging, setIsDragging] = useState(false)
-  const [dragStartX, setDragStartX] = useState(0)
-
-  const handleMouseDown = (e) => {
-    if (e.button === 0) { // Left click only
-      setIsDragging(true)
-      setDragStartX(e.clientX)
-    }
-  }
-
-  const handleMouseMove = (e) => {
-    if (isDragging) {
-      const deltaX = e.clientX - dragStartX
-      // Drag threshold to trigger removal
-      if (Math.abs(deltaX) > 100) {
-        onDragAway && onDragAway(message.id)
-        setIsDragging(false)
-      }
-    }
-  }
-
-  const handleMouseUp = () => {
-    setIsDragging(false)
-  }
-
-  useEffect(() => {
-    if (isDragging) {
-      window.addEventListener('mousemove', handleMouseMove)
-      window.addEventListener('mouseup', handleMouseUp)
-      return () => {
-        window.removeEventListener('mousemove', handleMouseMove)
-        window.removeEventListener('mouseup', handleMouseUp)
-      }
-    }
-  }, [isDragging, dragStartX])
-
-  return (
-    <div
-      onClick={onClick}
-      onMouseDown={handleMouseDown}
-      style={{
-        cursor: isDragging ? 'grabbing' : 'grab',
-        display: 'flex',
-        flexDirection: 'column',
-        alignItems: 'center',
-        transition: isDragging ? 'none' : 'transform 0.3s ease',
-      }}
-      onMouseEnter={e => { if (!isDragging) e.currentTarget.style.transform = 'scale(1.15)' }}
-      onMouseLeave={e => { if (!isDragging) e.currentTarget.style.transform = 'scale(1)' }}
-    >
-      {/* Garrafa deitada (horizontal) */}
-      <div
-        style={{
-          width: '120px',
-          height: '55px',
-          position: 'relative',
-          display: 'flex',
-          alignItems: 'center',
-          transform: `rotate(${tilt}deg)`,
-        }}
-      >
-        {/* Marcador de estado (bolinha verde/vermelha) */}
-        <div style={{
-          position: 'absolute',
-          top: '-8px',
-          left: '50%',
-          transform: 'translateX(-50%)',
-          width: '14px',
-          height: '14px',
-          borderRadius: '50%',
-          background: isOpened ? '#ff4444' : '#4ade80',
-          border: '2px solid white',
-          boxShadow: '0 2px 4px rgba(0,0,0,0.3)',
-          zIndex: 10,
-        }} />
-        
-        {/* Corpo da garrafa (horizontal) */}
-        <div
-          style={{
-            width: '70px',
-            height: '42px',
-            background: isOwn
-              ? 'linear-gradient(90deg, #004a99, #0066cc)'
-              : 'linear-gradient(90deg, #0d2a42, #1a4d6d)',
-            borderRadius: '16px 6px 6px 16px',
-            border: `2px solid ${theme.colors.secondary}`,
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            boxShadow: '0 0 12px rgba(0,163,255,0.3)',
-            position: 'relative',
-          }}
-        >
-          <span style={{ fontSize: '18px' }}>
-            {message.mediaType === 'image' ? '🖼️' :
-             message.mediaType === 'audio' ? '🎵' :
-             message.mediaType === 'file' ? '📄' : '📜'}
-          </span>
-          {/* Brilho */}
-          <div style={{
-            position: 'absolute', top: '4px', left: '8px',
-            width: '20px', height: '6px',
-            background: 'rgba(255,255,255,0.15)', borderRadius: '3px',
-          }} />
-        </div>
-        {/* Gargalo (horizontal) */}
-        <div style={{
-          width: '22px', height: '16px',
-          background: isOwn ? '#4ade80' : '#1a4d6d',
-          border: `1px solid ${theme.colors.secondary}`,
-          borderRadius: '0 3px 3px 0',
-        }} />
-        {/* Cortiça (horizontal) */}
-        <div style={{
-          width: '12px', height: '18px',
-          background: '#c4956a',
-          borderRadius: '2px 4px 4px 2px',
-        }} />
-      </div>
-
-      {/* Info abaixo */}
-      <p style={{
-        fontSize: theme.fonts.sizes.xs,
-        color: theme.colors.textSecondary,
-        marginTop: theme.spacing.xs,
-        textAlign: 'center', maxWidth: '90px',
-        overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
-      }}>
-        {isOwn ? 'Você' : message.senderName}
-      </p>
-      <p style={{ fontSize: '10px', color: theme.colors.secondary, marginTop: '2px' }}>
-        {isOpened ? 'Aberto' : 'Clique para abrir'}
-      </p>
-    </div>
-  )
-}
-
-// Componente Barril de Madeira - para vídeos (Estilo Pirata com Imagem)
-function Barrel({ message, onClick, index, isOpened, onDragAway }) {
-  const isOwn = message.sender === 'me'
-  // Rotação leve para simular boiando na água (horizontal)
-  const tilt = -15 + (index % 5) * 8 // entre -15 e +17 graus
-  const [isDragging, setIsDragging] = useState(false)
-  const [dragStartX, setDragStartX] = useState(0)
-
-  const handleMouseDown = (e) => {
-    if (e.button === 0) { // Left click only
-      setIsDragging(true)
-      setDragStartX(e.clientX)
-    }
-  }
-
-  const handleMouseMove = (e) => {
-    if (isDragging) {
-      const deltaX = e.clientX - dragStartX
-      // Drag threshold to trigger removal
-      if (Math.abs(deltaX) > 100) {
-        onDragAway && onDragAway(message.id)
-        setIsDragging(false)
-      }
-    }
-  }
-
-  const handleMouseUp = () => {
-    setIsDragging(false)
-  }
-
-  useEffect(() => {
-    if (isDragging) {
-      window.addEventListener('mousemove', handleMouseMove)
-      window.addEventListener('mouseup', handleMouseUp)
-      return () => {
-        window.removeEventListener('mousemove', handleMouseMove)
-        window.removeEventListener('mouseup', handleMouseUp)
-      }
-    }
-  }, [isDragging, dragStartX])
-
-  return (
-    <div
-      onClick={onClick}
-      onMouseDown={handleMouseDown}
-      style={{
-        cursor: isDragging ? 'grabbing' : 'grab',
-        display: 'flex',
-        flexDirection: 'column',
-        alignItems: 'center',
-        transition: isDragging ? 'none' : 'transform 0.3s ease',
-      }}
-      onMouseEnter={e => { if (!isDragging) e.currentTarget.style.transform = 'scale(1.15)' }}
-      onMouseLeave={e => { if (!isDragging) e.currentTarget.style.transform = 'scale(1)' }}
-    >
-      {/* Barril deitado (horizontal) */}
-      <div
-        style={{
-          width: '180px',
-          height: '90px',
-          position: 'relative',
-          display: 'flex',
-          alignItems: 'center',
-          transform: `rotate(${tilt}deg)`,
-        }}
-      >
-        {/* Marcador de estado (bolinha verde/vermelha) */}
-        <div style={{
-          position: 'absolute',
-          top: '-8px',
-          left: '50%',
-          transform: 'translateX(-50%)',
-          width: '14px',
-          height: '14px',
-          borderRadius: '50%',
-          background: isOpened ? '#ff4444' : '#4ade80',
-          border: '2px solid white',
-          boxShadow: '0 2px 4px rgba(0,0,0,0.3)',
-          zIndex: 10,
-        }} />
-        {/* Corpo do barril - CSS puro (funciona sem imagem) */}
-        <div style={{
-          width: '100%',
-          height: '100%',
-          position: 'relative',
-        }}>
-          {/* Imagem do barril */}
-          <img 
-            src="/img/barril.png"
-            alt="Barril de vídeo"
-            style={{
-              width: '100%',
-              height: '100%',
-              objectFit: 'contain',
-              filter: isOwn 
-                ? 'drop-shadow(0 0 12px rgba(74,222,128,0.5)) brightness(1.1)'
-                : 'drop-shadow(0 0 12px rgba(139,105,20,0.5))',
-            }}
-            onError={(e) => {
-              console.error('ERRO ao carregar barril.png no Chat!', e)
-              console.log('Tentando carregar de:', e.target.src)
-              e.target.style.display = 'none'
-              e.target.nextSibling.style.display = 'flex'
-            }}
-            onLoad={() => console.log('✅ Barril.png carregado com sucesso no Chat!')}
-          />
-          
-          {/* Barril CSS (fallback se imagem não carregar) */}
-          <div style={{
-            display: 'none',
-            width: '100%',
-            height: '100%',
-            background: isOwn
-              ? 'linear-gradient(90deg, #8B6914 0%, #A0782C 20%, #C49A3C 50%, #A0782C 80%, #8B6914 100%)'
-              : 'linear-gradient(90deg, #6B4F10 0%, #8B6914 20%, #A0782C 50%, #8B6914 80%, #6B4F10 100%)',
-            borderRadius: '30px',
-            border: '3px solid #4A3008',
-            position: 'relative',
-            boxShadow: '0 4px 12px rgba(0,0,0,0.4)',
-          }}>
-            {/* Aros de metal */}
-            <div style={{
-              position: 'absolute',
-              left: '20px',
-              top: '0',
-              bottom: '0',
-              width: '6px',
-              background: 'linear-gradient(180deg, #666, #999, #666)',
-              borderRadius: '3px',
-            }} />
-            <div style={{
-              position: 'absolute',
-              right: '20px',
-              top: '0',
-              bottom: '0',
-              width: '6px',
-              background: 'linear-gradient(180deg, #666, #999, #666)',
-              borderRadius: '3px',
-            }} />
-          </div>
-        </div>
-      </div>
-
-      {/* Nome abaixo do barril */}
-      <p style={{
-        fontSize: theme.fonts.sizes.xs,
-        color: theme.colors.textSecondary,
-        marginTop: theme.spacing.xs,
-        textAlign: 'center', maxWidth: '100px',
-        overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
-      }}>
-        {isOwn ? 'Você' : message.senderName}
-      </p>
-      <p style={{ fontSize: '10px', color: '#A0782C', marginTop: '2px' }}>
-        🛢️ Clique para abrir
-      </p>
-    </div>
-  )
-}
-
-// Modal para abrir Garrafa ou Barril
-function BottleModal({ message, onClose }) {
-  const isOwn = message.sender === 'me'
-  const isBarrel = message.mediaType === 'video'
-
-  // Fechar com tecla ESC
-  useEffect(() => {
-    const handleEsc = (e) => {
-      if (e.key === 'Escape') onClose()
-    }
-    window.addEventListener('keydown', handleEsc)
-    return () => window.removeEventListener('keydown', handleEsc)
-  }, [onClose])
-
-  return (
-    <div
-      onClick={onClose}
-      style={{
-        position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
-        background: 'rgba(0,0,0,0.7)',
-        display: 'flex', alignItems: 'center', justifyContent: 'center',
-        zIndex: 1000, animation: 'fadeIn 0.3s ease',
-        padding: '20px',
-      }}
-    >
-      <div
-        onClick={e => e.stopPropagation()}
-        style={{
-          background: isBarrel 
-            ? 'linear-gradient(135deg, #2C1810 0%, #4A2F1D 50%, #2C1810 100%)'
-            : theme.colors.surface,
-          borderRadius: theme.borderRadius.lg,
-          padding: theme.spacing.xl,
-          maxWidth: '500px', width: '90%',
-          maxHeight: '80vh',
-          overflowY: 'auto',
-          border: isBarrel ? '3px solid #A0782C' : `2px solid ${theme.colors.secondary}`,
-          boxShadow: isBarrel 
-            ? '0 0 30px rgba(139,105,20,0.6), inset 0 0 50px rgba(0,0,0,0.3)'
-            : theme.shadows.glow,
-          animation: 'scaleUp 0.3s ease',
-          position: 'relative',
-        }}
-      >
-        {/* Botão X para fechar */}
-        <button
-          onClick={onClose}
-          style={{
-            position: 'absolute',
-            top: '10px',
-            right: '15px',
-            background: 'none',
-            border: 'none',
-            color: isBarrel ? '#FFD700' : theme.colors.text,
-            fontSize: '28px',
-            cursor: 'pointer',
-            padding: '5px',
-            lineHeight: '1',
-            zIndex: 10,
-          }}
-        >
-          ✕
-        </button>
-        {/* Ícone */}
-        <div style={{ textAlign: 'center', marginBottom: theme.spacing.lg }}>
-          <span style={{ fontSize: '72px', filter: 'drop-shadow(0 4px 8px rgba(0,0,0,0.5))' }}>
-            {isBarrel ? '🛢️' : '🍾'}
-          </span>
-        </div>
-
-        {/* Remetente */}
-        <div style={{
-          textAlign: 'center', marginBottom: theme.spacing.lg,
-          paddingBottom: theme.spacing.md,
-          borderBottom: `1px solid ${isBarrel ? '#A0782C' : theme.colors.border}`,
-        }}>
-          <p style={{ fontWeight: 'bold', fontSize: theme.fonts.sizes.lg, color: isBarrel ? '#FFD700' : theme.colors.text }}>
-            {isBarrel ? '🎬 Barril Pirata' : '📜 Mensagem'} de {isOwn ? 'Você' : (message.senderName || 'Desconhecido')}
-          </p>
-          <p style={{ fontSize: theme.fonts.sizes.sm, color: theme.colors.textSecondary }}>
-            {message.time}
-          </p>
-        </div>
-
-        {/* Anúncio Exoclick */}
-        <ExoclickAd />
-
-        {/* Conteúdo */}
-        <div style={{
-          background: isBarrel ? 'rgba(0,0,0,0.4)' : theme.colors.background,
-          padding: theme.spacing.lg,
-          borderRadius: theme.borderRadius.md,
-          marginBottom: theme.spacing.lg,
-          minHeight: '80px',
-          border: isBarrel ? '1px solid rgba(160,120,44,0.3)' : 'none',
-        }}>
-          <p style={{ fontSize: theme.fonts.sizes.md, lineHeight: 1.6 }}>
-            {message.text}
-          </p>
-
-          {/* Imagem */}
-          {message.mediaUrl && message.mediaType === 'image' && (
-            <img src={message.mediaUrl} alt="arquivo" style={{
-              maxWidth: '100%', borderRadius: theme.borderRadius.md, marginTop: theme.spacing.md,
-            }} />
-          )}
-          {/* Vídeo (do barril) */}
-          {message.mediaUrl && message.mediaType === 'video' && (
-            <video src={message.mediaUrl} controls style={{
-              maxWidth: '100%', borderRadius: theme.borderRadius.md, marginTop: theme.spacing.md,
-              boxShadow: '0 4px 12px rgba(0,0,0,0.5)',
-            }} />
-          )}
-          {/* Áudio */}
-          {message.mediaUrl && message.mediaType === 'audio' && (
-            <audio src={message.mediaUrl} controls style={{
-              width: '100%', marginTop: theme.spacing.md,
-            }} />
-          )}
-          {/* Arquivo */}
-          {message.mediaUrl && message.mediaType === 'file' && (
-            <div style={{
-              marginTop: theme.spacing.md, padding: theme.spacing.md,
-              background: isBarrel ? 'rgba(139,105,20,0.2)' : theme.colors.surface, 
-              borderRadius: theme.borderRadius.md, textAlign: 'center',
-              border: isBarrel ? '1px solid rgba(160,120,44,0.3)' : 'none',
-            }}>
-              <p>📄 {message.fileName || 'Arquivo anexado'}</p>
-            </div>
-          )}
-        </div>
-
-        <Button 
-          variant={isBarrel ? 'primary' : 'secondary'} 
-          onClick={onClose} 
-          style={{ 
-            width: '100%',
-            background: isBarrel ? 'linear-gradient(90deg, #8B6914, #A0782C)' : undefined,
-          }}
-        >
-          {isBarrel ? '🛢️ Fechar Barril Pirata' : '🍾 Fechar Garrafa'}
-        </Button>
-      </div>
-    </div>
-  )
-}
+// REMOVIDO: Componentes Bottle, Barrel e BottleModal - oceano agora é apenas na página Status
 
 // REMOVIDO: Dados mockados - agora tudo é REAL do banco de dados
 // Contatos e mensagens vêm do PostgreSQL via API
@@ -743,26 +295,21 @@ const autoResponses = [
   'Show! Falou tudo!',
 ]
 
-export function Chat({ oceanoMode }) {
+export function Chat() {
   const { user, logout } = useAuth()
   const [selectedChat, setSelectedChat] = useState(null)
   const [messageText, setMessageText] = useState('')
   const [messages, setMessages] = useState({}) // REMOVIDO: mockMessages - agora vem do banco
   const [searchTerm, setSearchTerm] = useState('')
-  const [selectedBottle, setSelectedBottle] = useState(null)
-  const [oceanoText, setOceanoText] = useState('')
   const [showContactsOnMobile, setShowContactsOnMobile] = useState(true)
   const [contacts, setContacts] = useState([]) // REMOVIDO: mockContacts - agora vem do banco
-  const [oceanoBottles, setOceanoBottles] = useState([]) // REMOVIDO: dados mockados - agora vem do banco
   const [loading, setLoading] = useState(true)
   const [showWhatsAppSync, setShowWhatsAppSync] = useState(false)
-  const [showMiniAnuncio, setShowMiniAnuncio] = useState(false)
-  const [openedBottles, setOpenedBottles] = useState(new Set()) // Track opened bottles
+  // REMOVIDO: showMiniAnuncio, selectedBottle, openedBottles - oceano agora é apenas na página Status
   const { saldo, pontuar, adicionarPontos } = useCDCoin()
   const messagesEndRef = useRef(null)
   const fileInputRef = useRef(null)
   const audioInputRef = useRef(null)
-  const oceanoFileRef = useRef(null)
   const videoRecorderRef = useRef(null)
   const socketRef = useRef(null)
 
@@ -815,17 +362,8 @@ export function Chat({ oceanoMode }) {
       }
 
       try {
-        // Carregar mensagens REAIS do oceano
-        const oceanoMessages = await getOceanoMessages()
-        console.log(`🌊 ${oceanoMessages.length} mensagens do oceano carregadas`)
-        setOceanoBottles(oceanoMessages.map(msg => ({
-          ...msg,
-          sender: msg.sender_id === user?.id ? 'me' : 'them',
-          senderName: msg.sender_name || 'Usuário',
-          time: new Date(msg.created_at).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }),
-          mediaType: msg.media_type,  // ← Importante para vídeo → barril
-          mediaUrl: msg.media_url,    // ← URL da mídia
-        })))
+        // REMOVIDO: Carregar mensagens do oceano - agora é apenas na página Status
+        // O Chat deve mostrar apenas mensagens privadas entre contatos
 
         // Carregar contatos REAIS do banco
         const userContacts = await getContacts(user.id)
@@ -875,18 +413,16 @@ export function Chat({ oceanoMode }) {
       console.log('⚠️ WebSocket não conectado (backend offline):', err.message)
     })
     socketRef.current.on('new_message', (message) => {
-      // Som de garrafa quando recebe nova mensagem
+      // REMOVIDO: Não processar mensagens do oceano no Chat
+      // O Chat deve mostrar apenas mensagens privadas (is_oceano = false)
+      if (message.is_oceano) {
+        return // Ignorar mensagens do oceano
+      }
+      
+      // Som de mensagem quando recebe nova mensagem privada
       playBottleSound()
       
-      if (message.is_oceano) {
-        // Adicionar às garrafas do oceano
-        setOceanoBottles(prev => [{
-          ...message,
-          sender: message.sender_id === user?.id ? 'me' : 'them',
-          senderName: message.sender_name || 'Usuário',
-          time: new Date(message.created_at).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })
-        }, ...prev])
-      } else if (selectedChat && (message.sender_id === selectedChat.id || message.receiver_id === selectedChat.id)) {
+      if (selectedChat && (message.sender_id === selectedChat.id || message.receiver_id === selectedChat.id)) {
         // Adicionar ao chat atual
         setMessages(prev => ({
           ...prev,
@@ -907,26 +443,7 @@ export function Chat({ oceanoMode }) {
     }
   }, [user, selectedChat])
 
-  // Posições aleatórias para garrafas no oceano (estável, bem espalhadas)
-  const bottlePositions = useMemo(() => {
-    const positions = []
-    const count = 20
-    for (let i = 0; i < count; i++) {
-      // Grid com jitter para espalhar bem
-      const cols = 5
-      const col = i % cols
-      const row = Math.floor(i / cols)
-      const cellW = 85 / cols  // largura de cada célula
-      const cellH = 75 / 4     // altura de cada célula
-      positions.push({
-        left: `${4 + col * cellW + Math.random() * (cellW * 0.6)}%`,
-        top: `${3 + row * cellH + Math.random() * (cellH * 0.5)}%`,
-        delay: `${Math.random() * 4}s`,
-        duration: `${3 + Math.random() * 3}s`,
-      })
-    }
-    return positions
-  }, [])
+  // REMOVIDO: bottlePositions - oceano agora é apenas na página Status
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
@@ -1035,30 +552,9 @@ export function Chat({ oceanoMode }) {
           pontuar.mensagemEnviada()
         }
       } else {
-        // Enviar para o oceano
-        const newBottle = {
-          sender_id: user?.id,
-          text: mediaType === 'video' ? `🛢️ ${file.name}` : `📎 ${file.name}`,
-          media_url: mediaUrl,
-          media_type: mediaType,
-          file_name: file.name,
-          is_oceano: true,
-        }
-        
-        const savedMessage = await sendApiMessage(newBottle)
-        
-        const localBottle = {
-          id: savedMessage.id,
-          sender: 'me',
-          senderName: user?.name || 'Você',
-          text: mediaType === 'video' ? `🛢️ ${file.name}` : `📎 ${file.name}`,
-          time: timeStr,
-          mediaUrl: mediaUrl,
-          mediaType: mediaType,
-        }
-        
-        setOceanoBottles(prev => [localBottle, ...prev])
-        playBottleSound() // Som no oceano
+        // REMOVIDO: Não é mais possível enviar para o oceano pelo Chat
+        alert('Selecione um contato para enviar mensagens privadas')
+        return
       }
     } catch (error) {
       console.error('❌ Erro ao fazer upload:', error)
@@ -1068,40 +564,6 @@ export function Chat({ oceanoMode }) {
     // Reset inputs
     if (fileInputRef.current) fileInputRef.current.value = ''
     if (audioInputRef.current) audioInputRef.current.value = ''
-    if (oceanoFileRef.current) oceanoFileRef.current.value = ''
-  }
-
-  const handleOceanoSend = async (e) => {
-    e.preventDefault()
-    if (!oceanoText.trim()) return
-
-    try {
-      const newBottle = {
-        sender_id: user?.id,
-        text: oceanoText.trim(),
-        is_oceano: true,
-      }
-
-      // Enviar para API
-      const savedMessage = await sendApiMessage(newBottle)
-
-      const localBottle = {
-        id: savedMessage.id,
-        sender: 'me',
-        senderName: user?.name || 'Você',
-        text: oceanoText.trim(),
-        time: new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }),
-      }
-
-      setOceanoBottles(prev => [localBottle, ...prev])
-      setOceanoText('')
-      
-      // Tocar som de garrafa no oceano
-      playBottleSound()
-    } catch (error) {
-      console.error('Erro ao enviar garrafa:', error)
-      alert('Erro ao enviar para o oceano: ' + (error.response?.data?.error || error.message))
-    }
   }
 
   // Handler para áudio gravado
@@ -1144,28 +606,9 @@ export function Chat({ oceanoMode }) {
           [selectedChat.id]: [...(prev[selectedChat.id] || []), localMsg],
         }))
       } else {
-        // Enviar para o oceano
-        const savedMessage = await sendApiMessage({
-          sender_id: user?.id,
-          text: '🎤 Áudio gravado',
-          media_url: mediaUrl,
-          media_type: 'audio',
-          file_name: 'audio_gravado.webm',
-          is_oceano: true,
-        })
-        
-        const localBottle = {
-          id: savedMessage.id,
-          sender: 'me',
-          senderName: user?.name || 'Você',
-          text: '🎤 Áudio gravado',
-          time: timeStr,
-          mediaUrl: mediaUrl,
-          mediaType: 'audio',
-        }
-        
-        setOceanoBottles(prev => [localBottle, ...prev])
-        playBottleSound() // Som de garrafa no oceano
+        // REMOVIDO: Não é mais possível enviar para o oceano pelo Chat
+        alert('Selecione um contato para enviar áudio')
+        return
       }
     } catch (error) {
       console.error('❌ Erro ao enviar áudio:', error)
@@ -1213,28 +656,9 @@ export function Chat({ oceanoMode }) {
           [selectedChat.id]: [...(prev[selectedChat.id] || []), localMsg],
         }))
       } else {
-        // Enviar para o oceano
-        const savedMessage = await sendApiMessage({
-          sender_id: user?.id,
-          text: '🎥 Vídeo gravado',
-          media_url: mediaUrl,
-          media_type: 'video',
-          file_name: 'video_gravado.webm',
-          is_oceano: true,
-        })
-        
-        const localBottle = {
-          id: savedMessage.id,
-          sender: 'me',
-          senderName: user?.name || 'Você',
-          text: '🎥 Vídeo gravado',
-          time: timeStr,
-          mediaUrl: mediaUrl,
-          mediaType: 'video',
-        }
-        
-        setOceanoBottles(prev => [localBottle, ...prev])
-        playBottleSound() // Som de barril no oceano
+        // REMOVIDO: Não é mais possível enviar para o oceano pelo Chat
+        alert('Selecione um contato para enviar vídeo')
+        return
       }
     } catch (error) {
       console.error('❌ Erro ao enviar vídeo:', error)
@@ -1242,193 +666,8 @@ export function Chat({ oceanoMode }) {
     }
   }
 
-  // Handler para remover garrafa ao arrastar para o lado
-  const handleDragAway = (bottleId) => {
-    setOceanoBottles(prev => prev.filter(bottle => bottle.id !== bottleId))
-    setOpenedBottles(prev => {
-      const newSet = new Set(prev)
-      newSet.delete(bottleId)
-      return newSet
-    })
-  }
-
-  // Função para renderizar Bottle ou Barrel
-  const renderFloatingItem = (msg, idx) => {
-    const pos = bottlePositions[idx % bottlePositions.length]
-    const isVideo = msg.mediaType === 'video' || msg.media_type === 'video'
-    const Component = isVideo ? Barrel : Bottle
-    return (
-      <div
-        key={msg.id}
-        style={{
-          position: 'absolute',
-          left: pos.left,
-          top: pos.top,
-          animation: `float ${pos.duration} ease-in-out infinite`,
-          animationDelay: pos.delay,
-          zIndex: 1,
-        }}
-      >
-        <Component
-          message={msg}
-          index={idx}
-          isOpened={openedBottles.has(msg.id)}
-          onDragAway={handleDragAway}
-          onClick={() => {
-            setSelectedBottle(msg)
-            // Marcar como aberto
-            setOpenedBottles(prev => new Set([...prev, msg.id]))
-            // Mostrar anúncio automaticamente ao abrir garrafa/barril
-            setShowMiniAnuncio(true)
-            // Dar pontos ao abrir
-            if (isVideo) {
-              pontuar.videoAssistido()
-            } else {
-              pontuar.mensagemAberta()
-            }
-          }}
-        />
-      </div>
-    )
-  }
-
-  // Componente para renderizar oceano com garrafas espalhadas
-  const OceanView = ({ bottles, showInput }) => (
-    <div style={{
-      flex: 1,
-      minHeight: '400px',
-      display: 'flex',
-      flexDirection: 'column',
-      position: 'relative',
-      overflow: 'hidden',
-      background: `
-        radial-gradient(ellipse at 20% 80%, rgba(0,102,204,0.15) 0%, transparent 50%),
-        radial-gradient(ellipse at 80% 20%, rgba(0,163,255,0.1) 0%, transparent 50%),
-        radial-gradient(ellipse at 50% 100%, rgba(0,102,204,0.2) 0%, transparent 60%),
-        ${theme.colors.background}
-      `,
-    }}>
-      {/* Área das garrafas */}
-      <div style={{ flex: 1, position: 'relative', overflow: 'auto' }}>
-        {/* Ondas decorativas */}
-        <div style={{
-          position: 'absolute', bottom: 0, left: 0, right: 0, height: '80px',
-          background: 'linear-gradient(to top, rgba(0,102,204,0.1), transparent)',
-          pointerEvents: 'none',
-        }} />
-
-        {bottles.map((msg, idx) => renderFloatingItem(msg, idx))}
-      </div>
-
-      {/* Input fixo no fundo */}
-      {showInput && (
-        <div className="chat-input-bar" style={{
-          padding: theme.spacing.sm,
-          background: 'linear-gradient(to top, rgba(26,47,77,0.97), rgba(26,47,77,0.9))',
-          borderTop: `1px solid ${theme.colors.border}`,
-          display: 'flex',
-          gap: theme.spacing.xs,
-          alignItems: 'center',
-          flexShrink: 0,
-          flexWrap: 'wrap',
-        }}>
-          <input
-            type="file"
-            ref={oceanoFileRef}
-            accept=".jpg,.jpeg,.png,.gif,.webp,.mp4,.webm,.avi,.mp3,.wav,.ogg,.pdf,.doc,.docx,.txt"
-            onChange={handleFileUpload}
-            style={{ display: 'none' }}
-          />
-          <Button
-            type="button"
-            variant="secondary"
-            onClick={() => oceanoFileRef.current?.click()}
-            style={{ borderRadius: theme.borderRadius.full, padding: `${theme.spacing.xs} ${theme.spacing.sm}`, fontSize: theme.fonts.sizes.sm }}
-          >
-            📎
-          </Button>
-          
-          {/* Gravador de áudio no Oceano */}
-          <AudioRecorder onRecordingComplete={handleAudioRecording} />
-          
-          {/* Gravador de vídeo no Oceano */}
-          <VideoRecorder onRecordingComplete={handleVideoRecording} />
-          
-          <input
-            type="text"
-            value={oceanoText}
-            onChange={e => setOceanoText(e.target.value)}
-            onKeyDown={e => {
-              if (e.key === 'Enter' && !e.shiftKey) {
-                handleOceanoSend(e)
-              }
-            }}
-            placeholder="Jogue uma garrafa no oceano..."
-            style={{
-              flex: 1,
-              minWidth: '120px',
-              padding: theme.spacing.md,
-              background: theme.colors.background,
-              color: theme.colors.text,
-              border: `1px solid ${theme.colors.border}`,
-              borderRadius: theme.borderRadius.full,
-              fontSize: theme.fonts.sizes.md,
-              outline: 'none',
-            }}
-          />
-          <Button
-            onClick={handleOceanoSend}
-            variant="primary"
-            style={{
-              borderRadius: theme.borderRadius.full,
-              padding: `${theme.spacing.sm} ${theme.spacing.lg}`,
-              whiteSpace: 'nowrap',
-            }}
-          >
-            🍾 Jogar Garrafa
-          </Button>
-        </div>
-      )}
-    </div>
-  )
-
-  // MODO OCEANO - Tela cheia com garrafas coletivas
-  if (oceanoMode) {
-    return (
-      <div style={{ height: 'calc(100vh - 60px)', background: theme.colors.background, display: 'flex', flexDirection: 'column' }}>
-        <Header>
-          <h1 style={{ fontSize: theme.fonts.sizes.xl }}>🌊 Oceano</h1>
-          <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-            <CDCoinDisplay 
-              saldo={saldo} 
-              onConvertClick={() => alert('Em breve: tela de conversão de CDCOIN!')}
-            />
-            <Button variant="secondary" onClick={logout}>Sair</Button>
-          </div>
-        </Header>
-        <OceanView bottles={oceanoBottles} showInput />
-        
-        {/* Mini-anúncio ao abrir garrafa/barril */}
-        {showMiniAnuncio && (
-          <MiniAnuncio onClose={() => {
-            setShowMiniAnuncio(false)
-            pontuar.anuncioAssistido()
-          }} />
-        )}
-        
-        {selectedBottle && (
-          <BottleModal message={selectedBottle} onClose={() => {
-            setSelectedBottle(null)
-            // Pontuar ao fechar modal (após assistir anúncio)
-            pontuar.anuncioAssistido()
-            if (selectedBottle.mediaType === 'video') {
-              pontuar.oceanoParticipou()
-            }
-          }} />
-        )}
-      </div>
-    )
-  }
+  // REMOVIDO: renderFloatingItem e OceanView - oceano agora é apenas na página Status
+  // REMOVIDO: MODO OCEANO - agora é apenas a página Status
 
   // Filtrar contatos REAIS (não mais mockados)
   const filteredContacts = contacts.filter(c =>
@@ -1461,13 +700,7 @@ export function Chat({ oceanoMode }) {
         </div>
       </Header>
 
-      {/* Mini-anuncio */}
-      {showMiniAnuncio && (
-        <MiniAnuncio onClose={() => {
-          setShowMiniAnuncio(false)
-          pontuar.anuncioAssistido()
-        }} />
-      )}
+      {/* REMOVIDO: Mini-anuncio - oceano agora é apenas na página Status */}
 
       {/* Modal de sincronização WhatsApp */}
       {showWhatsAppSync && (
@@ -1647,17 +880,13 @@ export function Chat({ oceanoMode }) {
                 </div>
               </div>
 
-              {/* Área das Garrafas - Oceano */}
+              {/* Área de mensagens do chat */}
               <div style={{
                 flex: 1,
                 minHeight: 0,
                 overflowY: 'auto',
                 position: 'relative',
-                background: `
-                  radial-gradient(ellipse at 30% 70%, rgba(0,102,204,0.12) 0%, transparent 50%),
-                  radial-gradient(ellipse at 70% 30%, rgba(0,163,255,0.08) 0%, transparent 50%),
-                  ${theme.colors.background}
-                `,
+                background: theme.colors.background,
               }}>
                 {chatMessages.length === 0 ? (
                   <div style={{
@@ -1666,11 +895,45 @@ export function Chat({ oceanoMode }) {
                     color: theme.colors.textSecondary,
                     paddingTop: theme.spacing.xxl,
                   }}>
-                    <p style={{ fontSize: '48px', marginBottom: theme.spacing.md }}>🌊</p>
-                    <p>Nenhuma garrafa ainda. Envie a primeira!</p>
+                    <p style={{ fontSize: '48px', marginBottom: theme.spacing.md }}>💬</p>
+                    <p>Nenhuma mensagem ainda. Envie a primeira!</p>
                   </div>
                 ) : (
-                  chatMessages.map((msg, idx) => renderFloatingItem(msg, idx))
+                  chatMessages.map((msg) => (
+                    <div
+                      key={msg.id}
+                      style={{
+                        display: 'flex',
+                        justifyContent: msg.sender === 'me' ? 'flex-end' : 'flex-start',
+                        marginBottom: theme.spacing.md,
+                        padding: theme.spacing.sm,
+                      }}
+                    >
+                      <div
+                        style={{
+                          maxWidth: '70%',
+                          padding: theme.spacing.md,
+                          background: msg.sender === 'me' ? theme.colors.primary : theme.colors.surface,
+                          borderRadius: theme.borderRadius.md,
+                          color: msg.sender === 'me' ? '#fff' : theme.colors.text,
+                        }}
+                      >
+                        <p>{msg.text}</p>
+                        {msg.mediaUrl && msg.mediaType === 'image' && (
+                          <img src={msg.mediaUrl} alt="imagem" style={{ maxWidth: '100%', marginTop: theme.spacing.sm, borderRadius: theme.borderRadius.sm }} />
+                        )}
+                        {msg.mediaUrl && msg.mediaType === 'video' && (
+                          <video src={msg.mediaUrl} controls style={{ maxWidth: '100%', marginTop: theme.spacing.sm, borderRadius: theme.borderRadius.sm }} />
+                        )}
+                        {msg.mediaUrl && msg.mediaType === 'audio' && (
+                          <audio src={msg.mediaUrl} controls style={{ width: '100%', marginTop: theme.spacing.sm }} />
+                        )}
+                        <p style={{ fontSize: theme.fonts.sizes.xs, opacity: 0.7, marginTop: theme.spacing.xs }}>
+                          {msg.time}
+                        </p>
+                      </div>
+                    </div>
+                  ))
                 )}
                 <div ref={messagesEndRef} />
               </div>
@@ -1755,19 +1018,19 @@ export function Chat({ oceanoMode }) {
               </form>
             </>
           ) : (
-            /* Tela vazia - Oceano com garrafas */
-            <OceanView bottles={oceanoBottles} showInput={false} />
+            /* Tela vazia - Nenhum contato selecionado */
+            <div style={{
+              flex: 1,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              color: theme.colors.textSecondary,
+            }}>
+              <p style={{ fontSize: theme.fonts.sizes.lg }}>Selecione um contato para conversar</p>
+            </div>
           )}
         </div>
       </div>
-
-      {/* Modal da Garrafa */}
-      {selectedBottle && (
-        <BottleModal
-          message={selectedBottle}
-          onClose={() => setSelectedBottle(null)}
-        />
-      )}
     </div>
   )
 }

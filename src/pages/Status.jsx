@@ -8,6 +8,7 @@ import { MiniAnuncio } from '../components/MiniAnuncio'
 import { ExoclickAd } from '../components/ExoclickAd'
 import { TestExoclickAd } from '../components/TestExoclickAd'
 import { getOceanoMessages, sendMessage as sendApiMessage, uploadFile } from '../services/api'
+import { io } from 'socket.io-client'
 
 export function Status() {
   const { user, logout } = useAuth()
@@ -18,6 +19,7 @@ export function Status() {
   const [statuses, setStatuses] = useState([]) // REMOVIDO: dados mockados - agora vem do banco
   const [loading, setLoading] = useState(true)
   const [publishing, setPublishing] = useState(false) // Loading do botão publicar
+  const socketRef = useRef(null)
 
   // Carregar status REAIS do banco de dados
   useEffect(() => {
@@ -56,6 +58,67 @@ export function Status() {
     }
 
     loadStatuses()
+  }, [])
+
+  // Configurar WebSocket para receber mensagens do oceano em tempo real
+  useEffect(() => {
+    const backendUrl = window.location.hostname === 'localhost' 
+      ? 'http://localhost:3000' 
+      : window.location.origin
+    
+    socketRef.current = io(backendUrl, {
+      reconnection: true,
+      reconnectionDelay: 5000,
+      reconnectionAttempts: 5,
+      timeout: 10000,
+    })
+    
+    socketRef.current.on('connect', () => {
+      console.log('✅ WebSocket conectado no Status!')
+    })
+    
+    socketRef.current.on('connect_error', (err) => {
+      console.log('⚠️ WebSocket não conectado no Status:', err.message)
+    })
+    
+    socketRef.current.on('new_message', (message) => {
+      // Processar apenas mensagens do oceano (is_oceano = true)
+      if (!message.is_oceano) {
+        return // Ignorar mensagens privadas
+      }
+      
+      // Som de garrafa quando recebe novo status
+      playBottleSound()
+      
+      // Adicionar novo status ao topo da lista
+      const newStatus = {
+        id: message.id,
+        author: message.sender_name || 'Usuário',
+        avatar: message.sender_avatar || '👤',
+        content: message.text,
+        type: message.media_type === 'video' ? 'video' : 'text',
+        mediaUrl: message.media_url,
+        mediaType: message.media_type,
+        timestamp: new Date(message.created_at).toLocaleString('pt-BR', { 
+          day: '2-digit', 
+          month: '2-digit',
+          hour: '2-digit', 
+          minute: '2-digit' 
+        }),
+        views: message.views || 0,
+        likes: message.likes || 0,
+        liked: false,
+        sender_id: message.sender_id,
+      }
+      
+      setStatuses(prev => [newStatus, ...prev])
+    })
+
+    return () => {
+      if (socketRef.current) {
+        socketRef.current.disconnect()
+      }
+    }
   }, [])
 
   const handleCreateStatus = async (e) => {
