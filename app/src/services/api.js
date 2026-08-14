@@ -1,0 +1,105 @@
+import axios from 'axios';
+
+// Usar rotas API do Next.js (relativas — funcionam em dev e produção)
+const API_URL = '/api';
+
+// Criar instancia do axios
+const api = axios.create({
+  baseURL: API_URL,
+  headers: {
+    'Content-Type': 'application/json',
+  },
+});
+
+// ===== USUÁRIOS =====
+
+export const loginUser = async (userData) => {
+  const response = await api.post('/auth/login', userData);
+  return response.data;
+};
+
+export const createUser = async (userData) => {
+  const response = await api.post('/users', userData);
+  return response.data;
+};
+
+export const getUserByUsername = async (username) => {
+  const response = await api.get(`/users/${username}`);
+  return response.data;
+};
+
+// Atualizar perfil do usuário (nome, bio, cidade, país, avatar)
+export const updateUserProfile = async (username, profileData) => {
+  const response = await api.put(`/users/${username}`, profileData);
+  return response.data;
+};
+
+// Buscar usuários por telefones (sincronização WhatsApp)
+export const findUsersByPhones = async (phones) => {
+  const response = await api.post('/users/find-by-phones', { phones });
+  return response.data;
+};
+
+// Enviar convite via WhatsApp
+export const sendWhatsAppInvite = async (phone, inviterName, inviterId) => {
+  const response = await api.post('/invite/whatsapp', { phone, inviterName, inviter_id: inviterId });
+  return response.data;
+};
+
+// ===== MENSAGENS =====
+
+export const sendMessage = async (messageData) => {
+  const response = await api.post('/messages', messageData);
+  return response.data;
+};
+
+export const getMessages = async (userId1, userId2) => {
+  const response = await api.get(`/messages/${userId1}/${userId2}`);
+  return response.data;
+};
+
+export const getOceanoMessages = async () => {
+  const response = await api.get('/messages/oceano');
+  return response.data;
+};
+
+// Buscar status do usuário + contatos (não todos do oceano)
+export const getStatusMessages = async (userId) => {
+  const response = await api.get(`/messages/status/${userId}`);
+  return response.data;
+};
+
+// ===== CONTATOS =====
+
+export const addContact = async (userId, contactId) => {
+  const response = await api.post('/contacts', { user_id: userId, contact_id: contactId });
+  return response.data;
+};
+
+export const getContacts = async (userId) => {
+  const response = await api.get(`/contacts/${userId}`);
+  return response.data;
+};
+
+// ===== UPLOAD =====
+
+export const uploadFile = async (file) => {
+  const formData = new FormData();
+  formData.append('file', file);
+
+  const response = await api.post('/upload', formData, {
+    headers: {
+      'Content-Type': 'multipart/form-data',
+    },
+  });
+  return response.data;
+};
+
+// ===== HEALTH CHECK =====
+
+export const checkHealth = async () => {
+  const response = await api.get('/health');
+  return response.data;
+};
+
+export default api;
