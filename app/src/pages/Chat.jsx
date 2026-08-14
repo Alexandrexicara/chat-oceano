@@ -300,6 +300,7 @@ export function Chat() {
   const [messageText, setMessageText] = useState('')
   const [messages, setMessages] = useState({})
   const [searchTerm, setSearchTerm] = useState('')
+  const [searchOpen, setSearchOpen] = useState(false)
   const [showContactsOnMobile, setShowContactsOnMobile] = useState(true)
   const [localContacts, setLocalContacts] = useState([])
   const [loading, setLoading] = useState(true)
@@ -485,8 +486,8 @@ export function Chat() {
       // Upload do arquivo para o servidor
       console.log('📤 Fazendo upload do arquivo:', file.name)
       const uploadResult = await uploadFile(file)
-      const mediaUrl = uploadResult.filename ? `/uploads/${uploadResult.filename}` : null
-      console.log('✅ Upload concluído:', mediaUrl)
+      const mediaUrl = uploadResult.url || uploadResult.path || (uploadResult.filename ? `/uploads/${uploadResult.filename}` : null)
+      console.log('✅ Upload concluído:', mediaUrl?.slice(0, 60))
       
       const mediaType = file.type.startsWith('image/') ? 'image'
         : file.type.startsWith('video/') ? 'video'
@@ -554,8 +555,8 @@ export function Chat() {
       const blob = await response.blob()
       const file = new File([blob], `audio_${user?.id}_${Date.now()}.webm`, { type: blob.type })
       const uploadResult = await uploadFile(file)
-      const mediaUrl = uploadResult.filename ? `/uploads/${uploadResult.filename}` : recording.url
-      console.log('✅ Áudio enviado:', mediaUrl)
+      const mediaUrl = uploadResult.url || uploadResult.path || (uploadResult.filename ? `/uploads/${uploadResult.filename}` : recording.url)
+      console.log('✅ Áudio enviado:', mediaUrl?.slice(0, 60))
       
       const timeStr = new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })
 
@@ -604,8 +605,8 @@ export function Chat() {
       const blob = await response.blob()
       const file = new File([blob], `video_${user?.id}_${Date.now()}.webm`, { type: blob.type })
       const uploadResult = await uploadFile(file)
-      const mediaUrl = uploadResult.filename ? `/uploads/${uploadResult.filename}` : recording.url
-      console.log('✅ Vídeo enviado:', mediaUrl)
+      const mediaUrl = uploadResult.url || uploadResult.path || (uploadResult.filename ? `/uploads/${uploadResult.filename}` : recording.url)
+      console.log('✅ Vídeo enviado:', mediaUrl?.slice(0, 60))
       
       const timeStr = new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })
 
@@ -701,13 +702,31 @@ export function Chat() {
             overflow: 'hidden',
           }}
         >
-          {/* Busca */}
-          <div style={{ padding: `${theme.spacing.xs} ${theme.spacing.sm}` }}>
-            <Input
-              placeholder="🔍 Pesquisar..."
-              value={searchTerm}
-              onChange={e => setSearchTerm(e.target.value)}
-            />
+          {/* Busca — lupa expande o campo */}
+          <div style={{ padding: `${theme.spacing.xs} ${theme.spacing.sm}`, display: 'flex', alignItems: 'center', gap: '4px' }}>
+            <button
+              onClick={() => { setSearchOpen(v => !v); if (searchOpen) setSearchTerm('') }}
+              style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '18px', padding: '4px', color: theme.colors.text, flexShrink: 0 }}
+              title="Pesquisar contato"
+            >🔍</button>
+            {searchOpen && (
+              <input
+                autoFocus
+                placeholder="Pesquisar..."
+                value={searchTerm}
+                onChange={e => setSearchTerm(e.target.value)}
+                style={{
+                  flex: 1,
+                  padding: '6px 10px',
+                  background: theme.colors.background,
+                  color: theme.colors.text,
+                  border: `1px solid ${theme.colors.border}`,
+                  borderRadius: theme.borderRadius.full,
+                  fontSize: theme.fonts.sizes.sm,
+                  outline: 'none',
+                }}
+              />
+            )}
           </div>
 
           {/* Lista */}
@@ -931,11 +950,11 @@ export function Chat() {
                   flexWrap: 'wrap',
                 }}
               >
-                {/* Botão arquivo */}
+                {/* Inputs de arquivo ocultos */}
                 <input
                   ref={fileInputRef}
                   type="file"
-                  accept=".jpg,.jpeg,.png,.gif,.webp,.mp4,.webm,.avi,.pdf,.doc,.docx,.txt"
+                  accept="image/*,.jpg,.jpeg,.png,.gif,.webp"
                   onChange={handleFileUpload}
                   style={{ display: 'none' }}
                 />
@@ -946,24 +965,23 @@ export function Chat() {
                   onChange={handleFileUpload}
                   style={{ display: 'none' }}
                 />
-                <Button
+
+                {/* 🖼️ Imagem */}
+                <button
                   type="button"
-                  variant="secondary"
                   onClick={() => fileInputRef.current?.click()}
                   style={{
-                    borderRadius: theme.borderRadius.full,
-                    padding: `${theme.spacing.xs} ${theme.spacing.sm}`,
-                    fontSize: theme.fonts.sizes.sm,
+                    background: 'none', border: 'none', cursor: 'pointer',
+                    fontSize: '20px', padding: '4px', lineHeight: 1,
+                    title: 'Enviar imagem',
                   }}
-                  title="Enviar arquivo"
-                >
-                  📎
-                </Button>
-                
-                {/* Gravador de áudio */}
+                  title="Enviar imagem"
+                >🖼️</button>
+
+                {/* 🎤 Gravar áudio */}
                 <AudioRecorder onRecordingComplete={handleAudioRecording} />
-                
-                {/* Gravador de vídeo */}
+
+                {/* 🎥 Gravar vídeo */}
                 <VideoRecorder onRecordingComplete={handleVideoRecording} />
 
                 <input

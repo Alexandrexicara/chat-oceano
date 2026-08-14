@@ -93,7 +93,8 @@ export function Oceano() {
     try {
       let mediaUrlFinal = form.mediaUrl
 
-      if (form.mediaUrl && form.mediaUrl.startsWith('blob:')) {
+      // Se for blob: (áudio/vídeo gravado), faz upload; imagens já foram enviadas no onChange
+      if (form.mediaUrl && form.mediaUrl.startsWith('blob:') && form.mediaType !== 'image') {
         try {
           const res = await fetch(form.mediaUrl)
           const blob = await res.blob()
@@ -119,7 +120,7 @@ export function Oceano() {
         author: user?.name || 'Você',
         avatar: user?.avatar || '👤',
         content: form.text,
-        type: form.mediaType === 'video' ? 'video' : 'text',
+        type: form.mediaType === 'video' ? 'video' : form.mediaType === 'image' ? 'image' : 'text',
         mediaUrl: mediaUrlFinal,
         mediaType: form.mediaType,
         timestamp: 'agora',
@@ -203,7 +204,7 @@ export function Oceano() {
       display: 'flex', alignItems: 'center', justifyContent: 'center',
       fontSize: '20px', overflow: 'hidden', flexShrink: 0,
     }}>
-      {item.avatar && (item.avatar.startsWith('http') || item.avatar.startsWith('/'))
+      {item.avatar && (item.avatar.startsWith('http') || item.avatar.startsWith('/') || item.avatar.startsWith('data:'))
         ? <img src={item.avatar} alt={item.author} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
         : <span>{item.avatar || '👤'}</span>
       }
@@ -295,11 +296,13 @@ export function Oceano() {
                         background: theme.colors.background, padding: theme.spacing.md,
                         borderRadius: theme.borderRadius.md, marginBottom: theme.spacing.md,
                         minHeight: '130px', display: 'flex', flexDirection: 'column',
-                        alignItems: 'center', justifyContent: 'center',
+                        alignItems: 'center', justifyContent: 'center', overflow: 'hidden',
                       }}
                         onClick={() => { setSelectedItem(item); playBottleSound() }}
                       >
-                        {item.type === 'video' ? (
+                        {item.mediaType === 'image' && item.mediaUrl ? (
+                          <img src={item.mediaUrl} alt="imagem" style={{ maxWidth: '100%', maxHeight: '160px', borderRadius: theme.borderRadius.md, objectFit: 'cover' }} />
+                        ) : item.type === 'video' ? (
                           <>
                             <BarrelIcon isOwn={item.sender_id === user?.id} />
                             <p style={{ fontSize: theme.fonts.sizes.sm, textAlign: 'center', marginTop: '8px' }}>
@@ -372,7 +375,14 @@ export function Oceano() {
               {/* Preview de mídia */}
               {form.mediaUrl && (
                 <div style={{ marginBottom: theme.spacing.md }}>
-                  {form.mediaType === 'video' ? (
+                  {form.mediaType === 'image' ? (
+                    <div style={{ textAlign: 'center', background: theme.colors.background, borderRadius: theme.borderRadius.md, padding: '8px', position: 'relative' }}>
+                      <img src={form.mediaUrl} alt="preview" style={{ maxWidth: '100%', maxHeight: '200px', borderRadius: theme.borderRadius.md, objectFit: 'cover' }} />
+                      <Button type="button" variant="danger" onClick={() => setForm({ ...form, mediaUrl: '', mediaType: '' })} style={{ marginTop: '8px', fontSize: '12px', padding: '4px 12px' }}>
+                        ✕ Remover
+                      </Button>
+                    </div>
+                  ) : form.mediaType === 'video' ? (
                     <div style={{ textAlign: 'center', padding: theme.spacing.xl, background: theme.colors.background, borderRadius: theme.borderRadius.md, minHeight: '150px' }}>
                       <p style={{ fontSize: '60px', marginBottom: theme.spacing.md }}>🛢️</p>
                       <p style={{ color: theme.colors.textSecondary }}>Vídeo no barril — pronto!</p>
@@ -392,8 +402,25 @@ export function Oceano() {
                 </div>
               )}
 
-              {/* Gravadores */}
-              <div style={{ display: 'flex', gap: theme.spacing.md, marginBottom: theme.spacing.lg, flexWrap: 'wrap' }}>
+              {/* Upload de imagem + Gravadores */}
+              <div style={{ display: 'flex', gap: theme.spacing.md, marginBottom: theme.spacing.lg, flexWrap: 'wrap', alignItems: 'center' }}>
+                {/* Botão imagem */}
+                <label style={{ cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px',
+                  background: theme.colors.surface, border: `1px solid ${theme.colors.border}`,
+                  borderRadius: theme.borderRadius.full, padding: '8px 14px', fontSize: '14px', fontWeight: 'bold' }}>
+                  🖼️ Imagem
+                  <input type="file" accept="image/*" style={{ display: 'none' }} onChange={async (e) => {
+                    const file = e.target.files?.[0]
+                    if (!file) return
+                    const localUrl = URL.createObjectURL(file)
+                    setForm(f => ({ ...f, mediaUrl: localUrl, mediaType: 'image' }))
+                    try {
+                      const result = await uploadFile(file)
+                      const url = result.url || result.path || (result.filename ? `/uploads/${result.filename}` : null)
+                      if (url) setForm(f => ({ ...f, mediaUrl: url, mediaType: 'image' }))
+                    } catch(err) { console.error('Erro upload imagem:', err) }
+                  }} />
+                </label>
                 <AudioRecorder onRecordingComplete={({ url }) => setForm({ ...form, mediaUrl: url, mediaType: 'audio' })} />
                 <VideoRecorder onRecordingComplete={({ url }) => setForm({ ...form, mediaUrl: url, mediaType: 'video' })} />
               </div>

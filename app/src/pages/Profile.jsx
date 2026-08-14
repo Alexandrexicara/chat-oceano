@@ -46,24 +46,30 @@ export function Profile() {
     }
 
     setUploadingPhoto(true)
+
+    // Pré-visualização local imediata
+    const localPreview = URL.createObjectURL(file)
+    setFormData(prev => ({ ...prev, avatar: localPreview }))
+
     try {
       const result = await uploadFile(file)
       
-      // Aceita 'url', 'path' ou constrói de 'filename'
+      // Aceita 'url', 'path' ou constrói de 'filename' — upload retorna data URL
       const avatarUrl = result.url || result.path || (result.filename ? `/uploads/${result.filename}` : null)
       
       if (avatarUrl) {
-        // Atualizar avatar no formData e no contexto
         setFormData(prev => ({ ...prev, avatar: avatarUrl }))
-        
         // Atualizar perfil imediatamente (salva no banco)
         await updateProfile({ avatar: avatarUrl })
-        
         alert('✅ Foto de perfil atualizada com sucesso!')
+      } else {
+        alert('Erro: servidor não retornou URL da imagem.')
+        setFormData(prev => ({ ...prev, avatar: user?.avatar || '' }))
       }
     } catch (error) {
       console.error('Erro ao fazer upload:', error)
-      alert('Erro ao fazer upload da foto. Tente novamente.')
+      alert('Erro ao fazer upload da foto: ' + (error?.response?.data?.error || error.message))
+      setFormData(prev => ({ ...prev, avatar: user?.avatar || '' }))
     } finally {
       setUploadingPhoto(false)
     }
@@ -93,9 +99,7 @@ export function Profile() {
                     width: '120px',
                     height: '120px',
                     borderRadius: '50%',
-                    background: (user?.avatar && !user.avatar.startsWith('data:'))
-                      ? `url(${user.avatar}) center/cover no-repeat`
-                      : !user?.avatar
+                    background: !(formData.avatar || user?.avatar)
                       ? `linear-gradient(135deg, ${theme.colors.primary}, ${theme.colors.secondary})`
                       : 'none',
                     margin: '0 auto ' + theme.spacing.lg,
@@ -105,11 +109,12 @@ export function Profile() {
                     fontSize: '48px',
                     border: `4px solid ${theme.colors.secondary}`,
                     boxShadow: '0 4px 12px rgba(0,0,0,0.2)',
+                    overflow: 'hidden',
                   }}
                 >
-                  {user?.avatar && user.avatar.startsWith('data:') ? (
-                    <img src={user.avatar} alt="avatar" style={{ width: '100%', height: '100%', borderRadius: '50%', objectFit: 'cover' }} />
-                  ) : !user?.avatar ? '👤' : null}
+                  {(formData.avatar || user?.avatar) ? (
+                    <img src={formData.avatar || user.avatar} alt="avatar" style={{ width: '100%', height: '100%', borderRadius: '50%', objectFit: 'cover' }} />
+                  ) : '👤'}
                 </div>
                 
                 {/* Botão de upload */}
