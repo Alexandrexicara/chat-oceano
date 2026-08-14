@@ -35,7 +35,7 @@ export function Status() {
           author: msg.sender_name || 'Usuário',
           avatar: msg.sender_avatar || '👤',
           content: msg.text,
-          type: msg.media_type === 'video' ? 'video' : 'text',
+          type: msg.media_type === 'video' ? 'video' : msg.media_type === 'image' ? 'image' : 'text',
           mediaUrl: msg.media_url,
           mediaType: msg.media_type,
           timestamp: new Date(msg.created_at).toLocaleString('pt-BR', { 
@@ -224,6 +224,18 @@ export function Status() {
       mediaUrl: videoUrl,
       mediaType: 'video'
     })
+  }
+
+  const handleImageUpload = async (e) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    const localUrl = URL.createObjectURL(file)
+    setStatusForm(prev => ({ ...prev, mediaUrl: localUrl, mediaType: 'image' }))
+    try {
+      const result = await uploadFile(file)
+      const url = result.url || result.path || (result.filename ? `/uploads/${result.filename}` : null)
+      if (url) setStatusForm(prev => ({ ...prev, mediaUrl: url, mediaType: 'image' }))
+    } catch (err) { console.error('Erro upload imagem status:', err) }
   }
 
   const formatTime = (seconds) => {
@@ -465,6 +477,15 @@ export function Status() {
                             🛢️ {status.content || 'Vídeo no barril'}
                           </p>
                         </>
+                      ) : status.type === 'image' && status.mediaUrl ? (
+                        <>
+                          <img
+                            src={status.mediaUrl}
+                            alt="status"
+                            style={{ maxWidth: '100%', maxHeight: 180, borderRadius: 8, objectFit: 'cover', marginBottom: 6 }}
+                          />
+                          {status.content && <p style={{ fontSize: theme.fonts.sizes.sm, textAlign: 'center' }}>{status.content}</p>}
+                        </>
                       ) : status.mediaType === 'audio' ? (
                         <>
                           <div 
@@ -550,7 +571,9 @@ export function Status() {
               {/* Preview do mídia */}
               {statusForm.mediaUrl && (
                 <div style={{ marginBottom: theme.spacing.md }}>
-                  {statusForm.mediaType === 'video' ? (
+                  {statusForm.mediaType === 'image' ? (
+                    <img src={statusForm.mediaUrl} alt="preview" style={{ maxWidth: '100%', maxHeight: 220, borderRadius: theme.borderRadius.md, objectFit: 'cover' }} />
+                  ) : statusForm.mediaType === 'video' ? (
                     <div style={{ textAlign: 'center', padding: theme.spacing.xl, background: theme.colors.background, borderRadius: theme.borderRadius.md, minHeight: '150px' }}>
                       <p style={{ fontSize: '60px', marginBottom: theme.spacing.md }}>🛢️</p>
                       <p style={{ fontSize: theme.fonts.sizes.md, color: theme.colors.textSecondary }}>Vídeo gravado (barril)</p>
@@ -564,8 +587,13 @@ export function Status() {
                 </div>
               )}
 
-              {/* Gravadores */}
-              <div style={{ display: 'flex', gap: theme.spacing.md, marginBottom: theme.spacing.lg }}>
+              {/* Gravadores + imagem */}
+              <div style={{ display: 'flex', gap: theme.spacing.md, marginBottom: theme.spacing.lg, alignItems: 'center' }}>
+                {/* Upload imagem */}
+                <label title="Enviar imagem" style={{ cursor: 'pointer', fontSize: 50, lineHeight: 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  🖼️
+                  <input type="file" accept="image/*" onChange={handleImageUpload} style={{ display: 'none' }} />
+                </label>
                 <AudioRecorder onRecordingComplete={handleAudioRecording} />
                 <VideoRecorder onRecordingComplete={handleVideoRecording} />
               </div>

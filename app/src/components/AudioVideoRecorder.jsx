@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import { Button } from '../components/BaseComponents'
 import { theme } from '../styles/theme'
 
@@ -110,311 +110,178 @@ export function AudioRecorder({ onRecordingComplete }) {
 
 // Componente para gravar vídeo
 export function VideoRecorder({ onRecordingComplete }) {
-  const [isRecording, setIsRecording] = useState(false)
+  const [phase, setPhase] = useState('idle') // idle | preview | recording
+  const [facingMode, setFacingMode] = useState('user')
   const [recordingTime, setRecordingTime] = useState(0)
-  const [showPreview, setShowPreview] = useState(false)
-  const [facingMode, setFacingMode] = useState('user') // 'user' = frontal | 'environment' = traseira
-  const videoPreviewRef = useRef(null)
+  const videoRef = useRef(null)
   const mediaRecorderRef = useRef(null)
+  const streamRef = useRef(null)
   const chunksRef = useRef([])
   const timerRef = useRef(null)
-  const streamRef = useRef(null)
 
-  const startStream = async (facing) => {
-    // Parar stream anterior se existir
-    if (streamRef.current) {
-      streamRef.current.getTracks().forEach(track => track.stop())
-    }
-    const stream = await navigator.mediaDevices.getUserMedia({
-      video: { facingMode: facing, width: { ideal: 1280 }, height: { ideal: 720 } },
-      audio: true,
-    })
-    streamRef.current = stream
-    if (videoPreviewRef.current) {
-      videoPreviewRef.current.srcObject = stream
-    }
-    return stream
-  }
+  // Sempre que o preview abre ou câmera muda, conectar stream ao <video>
+  useEffect(() => {
+    if (phase === 'idle') return
+    let cancelled = false
 
-  const startRecording = async () => {
-    try {
-      const stream = await startStream(facingMode)
-      setShowPreview(true)
-
-      const mimeType = MediaRecorder.isTypeSupported('video/webm;codecs=vp9,opus')
-        ? 'video/webm;codecs=vp9,opus'
-        : MediaRecorder.isTypeSupported('video/webm;codecs=vp8,opus')
-        ? 'video/webm;codecs=vp8,opus'
-        : 'video/webm'
-
-      const mediaRecorder = new MediaRecorder(stream, { mimeType })
-      mediaRecorderRef.current = mediaRecorder
-      chunksRef.current = []
-
-      mediaRecorder.ondataavailable = (e) => {
-        if (e.data.size > 0) chunksRef.current.push(e.data)
+    const openStream = async () => {
+      // Parar stream anterior
+      if (streamRef.current) {
+        streamRef.current.getTracks().forEach(t => t.stop())
+        streamRef.current = null
       }
-      mediaRecorder.onstop = () => {
-        const blob = new Blob(chunksRef.current, { type: 'video/webm' })
-        const url = URL.createObjectURL(blob)
-        onRecordingComplete({ url, blob, type: 'video' })
-        setShowPreview(false)
-        if (streamRef.current) streamRef.current.getTracks().forEach(t => t.stop())
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({
+          video: { facingMode, width: { ideal: 1280 }, height: { ideal: 720 } },
+          audio: true,
+        })
+        if (cancelled) { stream.getTracks().forEach(t => t.stop()); return }
+        streamRef.current = stream
+        if (videoRef.current) {
+          videoRef.current.srcObject = stream
+          videoRef.current.play().catch(() => {})
+        }
+      } catch (err) {
+        console.error('Câmera indisponível:', err)
+        alert('Não foi possível acessar a câmera. Verifique as permissões.')
+        setPhase('idle')
       }
-
-      mediaRecorder.start()
-      setIsRecording(true)
-      setRecordingTime(0)
-      timerRef.current = setInterval(() => setRecordingTime(prev => prev + 1), 1000)
-    } catch (error) {
-      console.error('Erro ao acessar câmera:', error)
-      alert('Não foi possível acessar a câmera. Verifique as permissões.')
     }
+
+    openStream()
+    return () => { cancelled = true }
+  }, [phase, facingMode]) // eslint-disable-line
+
+  const startPreview = () => setPhase('preview')
+
+  const startRecording = () => {
+    if (!streamRef.current) return
+    const mimeType = ['video/webm;codecs=vp9,opus', 'video/webm;codecs=vp8,opus', 'video/webm']
+      .find(t => MediaRecorder.isTypeSupported(t)) || 'video/webm'
+
+    const rec = new MediaRecorder(streamRef.current, { mimeType })
+    mediaRecorderRef.current = rec
+    chunksRef.current = []
+
+    rec.ondataavailable = e => { if (e.data.size > 0) chunksRef.current.push(e.data) }
+    rec.onstop = () => {
+      const blob = new Blob(chunksRef.current, { type: 'video/webm' })
+      onRecordingComplete({ url: URL.createObjectURL(blob), blob, type: 'video' })
+      cleanup()
+    }
+
+    rec.start()
+    setPhase('recording')
+    setRecordingTime(0)
+    timerRef.current = setInterval(() => setRecordingTime(p => p + 1), 1000)
   }
 
   const stopRecording = () => {
-    if (mediaRecorderRef.current && isRecording) {
-      mediaRecorderRef.current.stop()
-      setIsRecording(false)
-      clearInterval(timerRef.current)
-    }
-  }
-
-  const cancelRecording = () => {
-    if (mediaRecorderRef.current && isRecording) {
-      mediaRecorderRef.current.stop()
-    }
-    if (streamRef.current) streamRef.current.getTracks().forEach(t => t.stop())
-    setIsRecording(false)
-    setShowPreview(false)
     clearInterval(timerRef.current)
+    if (mediaRecorderRef.current?.state !== 'inactive') mediaRecorderRef.current?.stop()
+    // onstop fará o cleanup
   }
 
-  const flipCamera = async () => {
-    const newFacing = facingMode === 'user' ? 'environment' : 'user'
-    setFacingMode(newFacing)
+  const cleanup = () => {
+    clearInterval(timerRef.current)
+    if (streamRef.current) { streamRef.current.getTracks().forEach(t => t.stop()); streamRef.current = null }
+    setPhase('idle')
+    setRecordingTime(0)
+  }
 
-    // Se já está gravando, reiniciar o stream com a nova câmera
-    if (isRecording && mediaRecorderRef.current) {
-      // Pausar gravação, trocar stream, retomar
-      try {
-        const newStream = await startStream(newFacing)
-        // Substituir as tracks no mediaRecorder não é direto — mais simples: avisar o usuário
-        // e reiniciar a gravação com a nova câmera
-        mediaRecorderRef.current.stop()
-        setIsRecording(false)
-        clearInterval(timerRef.current)
-        chunksRef.current = []
+  const cancel = () => {
+    if (mediaRecorderRef.current?.state !== 'inactive') mediaRecorderRef.current?.stop()
+    cleanup()
+  }
 
-        const mimeType = MediaRecorder.isTypeSupported('video/webm;codecs=vp9,opus')
-          ? 'video/webm;codecs=vp9,opus' : 'video/webm'
-        const newRecorder = new MediaRecorder(newStream, { mimeType })
-        mediaRecorderRef.current = newRecorder
-
-        newRecorder.ondataavailable = (e) => { if (e.data.size > 0) chunksRef.current.push(e.data) }
-        newRecorder.onstop = () => {
-          const blob = new Blob(chunksRef.current, { type: 'video/webm' })
-          const url = URL.createObjectURL(blob)
-          onRecordingComplete({ url, blob, type: 'video' })
-          setShowPreview(false)
-          if (streamRef.current) streamRef.current.getTracks().forEach(t => t.stop())
-        }
-        newRecorder.start()
-        setIsRecording(true)
-        setRecordingTime(0)
-        timerRef.current = setInterval(() => setRecordingTime(prev => prev + 1), 1000)
-      } catch (err) {
-        console.error('Erro ao trocar câmera:', err)
-      }
-    } else if (showPreview) {
-      // Ainda não gravando mas preview aberto — só trocar a câmera do preview
-      try {
-        await startStream(newFacing)
-      } catch (err) {
-        console.error('Erro ao trocar câmera no preview:', err)
-      }
+  const flipCamera = () => {
+    const next = facingMode === 'user' ? 'environment' : 'user'
+    // Se gravando, parar gravação antes de trocar
+    if (phase === 'recording') {
+      clearInterval(timerRef.current)
+      if (mediaRecorderRef.current?.state !== 'inactive') mediaRecorderRef.current?.stop()
+      chunksRef.current = []
+      mediaRecorderRef.current = null
     }
+    setFacingMode(next)
+    setPhase('preview') // vai re-triggar o useEffect com nova câmera
+    setRecordingTime(0)
   }
 
-  const formatTime = (seconds) => {
-    const mins = Math.floor(seconds / 60)
-    const secs = seconds % 60
-    return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`
-  }
+  const fmt = s => `${String(Math.floor(s / 60)).padStart(2,'0')}:${String(s % 60).padStart(2,'0')}`
 
-  if (showPreview) {
+  if (phase === 'idle') {
     return (
-      <div style={{
-        position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
-        background: '#000', display: 'flex', flexDirection: 'column',
-        alignItems: 'center', justifyContent: 'center', zIndex: 2000,
-      }}>
-        {/* Preview ao vivo */}
-        <div style={{ position: 'relative', width: '100%', maxWidth: '480px', flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-          <video
-            ref={videoPreviewRef}
-            autoPlay
-            playsInline
-            muted
-            style={{
-              width: '100%',
-              maxHeight: '70vh',
-              borderRadius: '12px',
-              objectFit: 'cover',
-              // Espelhar apenas câmera frontal
-              transform: facingMode === 'user' ? 'scaleX(-1)' : 'none',
-            }}
-          />
-
-          {/* Indicador REC */}
-          {isRecording && (
-            <div style={{
-              position: 'absolute', top: '16px', left: '16px',
-              display: 'flex', alignItems: 'center', gap: '8px',
-              background: 'rgba(0,0,0,0.6)', borderRadius: '20px', padding: '6px 14px',
-            }}>
-              <div style={{
-                width: '10px', height: '10px', borderRadius: '50%',
-                background: '#ff4444', animation: 'pulse 1s infinite',
-              }} />
-              <span style={{ color: '#fff', fontWeight: 'bold', fontSize: '16px' }}>
-                REC {formatTime(recordingTime)}
-              </span>
-            </div>
-          )}
-
-          {/* Botão virar câmera — canto superior direito */}
-          <button
-            type="button"
-            onClick={flipCamera}
-            title={facingMode === 'user' ? 'Câmera traseira' : 'Câmera frontal'}
-            style={{
-              position: 'absolute', top: '16px', right: '16px',
-              background: 'rgba(0,0,0,0.6)', border: 'none', borderRadius: '50%',
-              width: '52px', height: '52px', cursor: 'pointer',
-              fontSize: '28px', display: 'flex', alignItems: 'center', justifyContent: 'center',
-              color: '#fff',
-            }}
-          >
-            🔄
-          </button>
-
-          {/* Label câmera ativa */}
-          <div style={{
-            position: 'absolute', bottom: '16px', left: '50%', transform: 'translateX(-50%)',
-            background: 'rgba(0,0,0,0.55)', borderRadius: '12px', padding: '4px 14px',
-            color: '#fff', fontSize: '13px',
-          }}>
-            {facingMode === 'user' ? '🤳 Câmera frontal' : '📷 Câmera traseira'}
-          </div>
-        </div>
-
-        {/* Controles */}
-        <div style={{
-          width: '100%', maxWidth: '480px',
-          display: 'flex', justifyContent: 'center', alignItems: 'center',
-          gap: '24px', padding: '20px 16px',
-          background: 'rgba(0,0,0,0.8)',
-        }}>
-          {/* Cancelar */}
-          <button
-            type="button"
-            onClick={cancelRecording}
-            style={{
-              background: 'rgba(255,255,255,0.15)', border: 'none', borderRadius: '50%',
-              width: '56px', height: '56px', fontSize: '22px', cursor: 'pointer', color: '#fff',
-            }}
-          >
-            ✕
-          </button>
-
-          {/* Gravar / Parar — botão central grande */}
-          {!isRecording ? (
-            <button
-              type="button"
-              onClick={() => {
-                const mimeType = MediaRecorder.isTypeSupported('video/webm;codecs=vp9,opus')
-                  ? 'video/webm;codecs=vp9,opus' : 'video/webm'
-                const stream = streamRef.current
-                if (!stream) return
-                const rec = new MediaRecorder(stream, { mimeType })
-                mediaRecorderRef.current = rec
-                chunksRef.current = []
-                rec.ondataavailable = (e) => { if (e.data.size > 0) chunksRef.current.push(e.data) }
-                rec.onstop = () => {
-                  const blob = new Blob(chunksRef.current, { type: 'video/webm' })
-                  onRecordingComplete({ url: URL.createObjectURL(blob), blob, type: 'video' })
-                  setShowPreview(false)
-                  if (streamRef.current) streamRef.current.getTracks().forEach(t => t.stop())
-                }
-                rec.start()
-                setIsRecording(true)
-                setRecordingTime(0)
-                timerRef.current = setInterval(() => setRecordingTime(p => p + 1), 1000)
-              }}
-              style={{
-                width: '72px', height: '72px', borderRadius: '50%',
-                background: '#ff4444', border: '4px solid #fff',
-                cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
-                fontSize: '28px',
-              }}
-              title="Iniciar gravação"
-            >
-              ⏺
-            </button>
-          ) : (
-            <button
-              type="button"
-              onClick={stopRecording}
-              style={{
-                width: '72px', height: '72px', borderRadius: '50%',
-                background: '#ff4444', border: '4px solid #fff',
-                cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
-                fontSize: '28px',
-              }}
-              title="Parar gravação"
-            >
-              ⏹
-            </button>
-          )}
-
-          {/* Virar câmera — também no rodapé */}
-          <button
-            type="button"
-            onClick={flipCamera}
-            title={facingMode === 'user' ? 'Câmera traseira' : 'Câmera frontal'}
-            style={{
-              background: 'rgba(255,255,255,0.15)', border: 'none', borderRadius: '50%',
-              width: '56px', height: '56px', fontSize: '26px', cursor: 'pointer', color: '#fff',
-            }}
-          >
-            🔄
-          </button>
-        </div>
-
-        <style>{`
-          @keyframes pulse {
-            0%, 100% { opacity: 1; }
-            50% { opacity: 0.3; }
-          }
-        `}</style>
-      </div>
+      <button type="button" onClick={startPreview} title="Gravar vídeo"
+        style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '50px', padding: '4px', lineHeight: 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        🎥
+      </button>
     )
   }
 
-  // Botão inicial — abre preview antes de gravar
   return (
-    <button
-      type="button"
-      onClick={startRecording}
-      title="Gravar vídeo"
-      style={{
-        background: 'none', border: 'none', cursor: 'pointer',
-        fontSize: '50px', padding: '4px', lineHeight: 1,
-        display: 'flex', alignItems: 'center', justifyContent: 'center',
-      }}
-    >
-      🎥
-    </button>
+    <div style={{ position: 'fixed', inset: 0, background: '#000', zIndex: 2000, display: 'flex', flexDirection: 'column' }}>
+      {/* Preview ao vivo */}
+      <div style={{ flex: 1, position: 'relative', overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        <video
+          ref={videoRef}
+          autoPlay
+          playsInline
+          muted
+          style={{
+            width: '100%', height: '100%', objectFit: 'cover',
+            transform: facingMode === 'user' ? 'scaleX(-1)' : 'none',
+          }}
+        />
+
+        {/* REC badge */}
+        {phase === 'recording' && (
+          <div style={{ position: 'absolute', top: 16, left: 16, display: 'flex', alignItems: 'center', gap: 8, background: 'rgba(0,0,0,.6)', borderRadius: 20, padding: '6px 14px' }}>
+            <div style={{ width: 10, height: 10, borderRadius: '50%', background: '#f00', animation: 'recpulse 1s infinite' }} />
+            <span style={{ color: '#fff', fontWeight: 'bold', fontSize: 16 }}>REC {fmt(recordingTime)}</span>
+          </div>
+        )}
+
+        {/* Botão câmera — topo direito */}
+        <button type="button" onClick={flipCamera}
+          style={{ position: 'absolute', top: 16, right: 16, background: 'rgba(0,0,0,.55)', border: 'none', borderRadius: '50%', width: 52, height: 52, cursor: 'pointer', fontSize: 26, color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+          title={facingMode === 'user' ? 'Câmera traseira' : 'Câmera frontal'}
+        >🔄</button>
+
+        {/* Label câmera */}
+        <div style={{ position: 'absolute', bottom: 12, left: '50%', transform: 'translateX(-50%)', background: 'rgba(0,0,0,.5)', borderRadius: 12, padding: '3px 14px', color: '#fff', fontSize: 13, whiteSpace: 'nowrap' }}>
+          {facingMode === 'user' ? '🤳 Frontal' : '📷 Traseira'}
+        </div>
+      </div>
+
+      {/* Controles */}
+      <div style={{ background: 'rgba(0,0,0,.85)', padding: '18px 24px', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 32 }}>
+        {/* Cancelar */}
+        <button type="button" onClick={cancel}
+          style={{ width: 52, height: 52, borderRadius: '50%', background: 'rgba(255,255,255,.15)', border: 'none', cursor: 'pointer', fontSize: 22, color: '#fff' }}>
+          ✕
+        </button>
+
+        {/* Gravar / Parar */}
+        {phase === 'preview' ? (
+          <button type="button" onClick={startRecording}
+            style={{ width: 72, height: 72, borderRadius: '50%', background: '#f00', border: '4px solid #fff', cursor: 'pointer', fontSize: 30, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff' }}
+            title="Iniciar gravação">⏺</button>
+        ) : (
+          <button type="button" onClick={stopRecording}
+            style={{ width: 72, height: 72, borderRadius: '50%', background: '#f00', border: '4px solid #fff', cursor: 'pointer', fontSize: 30, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff' }}
+            title="Parar e enviar">⏹</button>
+        )}
+
+        {/* Virar câmera */}
+        <button type="button" onClick={flipCamera}
+          style={{ width: 52, height: 52, borderRadius: '50%', background: 'rgba(255,255,255,.15)', border: 'none', cursor: 'pointer', fontSize: 26, color: '#fff' }}
+          title={facingMode === 'user' ? 'Câmera traseira' : 'Câmera frontal'}>
+          🔄
+        </button>
+      </div>
+
+      <style>{`@keyframes recpulse{0%,100%{opacity:1}50%{opacity:.2}}`}</style>
+    </div>
   )
 }
