@@ -972,8 +972,8 @@ export function Chat() {
                   onClick={() => fileInputRef.current?.click()}
                   style={{
                     background: 'none', border: 'none', cursor: 'pointer',
-                    fontSize: '20px', padding: '4px', lineHeight: 1,
-                    title: 'Enviar imagem',
+                    fontSize: '50px', padding: '4px', lineHeight: 1,
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
                   }}
                   title="Enviar imagem"
                 >🖼️</button>

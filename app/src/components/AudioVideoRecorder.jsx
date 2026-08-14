@@ -60,19 +60,24 @@ export function AudioRecorder({ onRecordingComplete }) {
   return (
     <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
       {!isRecording ? (
-        <Button
+        <button
           type="button"
-          variant="secondary"
           onClick={startRecording}
-          style={{
-            borderRadius: theme.borderRadius.full,
-            padding: `${theme.spacing.sm} ${theme.spacing.md}`,
-            fontSize: theme.fonts.sizes.sm,
-          }}
           title="Gravar áudio"
+          style={{
+            background: 'none',
+            border: 'none',
+            cursor: 'pointer',
+            fontSize: '50px',
+            padding: '4px',
+            lineHeight: 1,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+          }}
         >
           🎤
-        </Button>
+        </button>
       ) : (
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
           <div style={{
@@ -260,18 +265,23 @@ export function VideoRecorder({ onRecordingComplete }) {
   }
 
   return (
-    <Button
+    <button
       type="button"
-      variant="secondary"
       onClick={startRecording}
-      style={{
-        borderRadius: theme.borderRadius.full,
-        padding: `${theme.spacing.sm} ${theme.spacing.md}`,
-        fontSize: theme.fonts.sizes.sm,
-      }}
       title="Gravar vídeo"
+      style={{
+        background: 'none',
+        border: 'none',
+        cursor: 'pointer',
+        fontSize: '50px',
+        padding: '4px',
+        lineHeight: 1,
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+      }}
     >
       🎥
-    </Button>
+    </button>
   )
 }

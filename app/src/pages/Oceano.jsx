@@ -407,8 +407,8 @@ export function Oceano() {
                 {/* Botão imagem */}
                 <label style={{ cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px',
                   background: theme.colors.surface, border: `1px solid ${theme.colors.border}`,
-                  borderRadius: theme.borderRadius.full, padding: '8px 14px', fontSize: '14px', fontWeight: 'bold' }}>
-                  🖼️ Imagem
+                  borderRadius: theme.borderRadius.full, padding: '8px 16px', fontSize: '50px', lineHeight: 1 }}>
+                  🖼️
                   <input type="file" accept="image/*" style={{ display: 'none' }} onChange={async (e) => {
                     const file = e.target.files?.[0]
                     if (!file) return
