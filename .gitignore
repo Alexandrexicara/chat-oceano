@@ -26,3 +26,8 @@ public/uploads/*
 *.njsproj
 *.sln
 *.sw?
+
+# Segredos e variáveis locais
+.env
+.env.*
+!.env.example
