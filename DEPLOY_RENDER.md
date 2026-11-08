@@ -1,58 +1,42 @@
-# 🚀 Deploy no Render
+# Deploy do OCEANOS no Render
 
-## ⚠️ IMPORTANTE - Configuração Correta
+## Configuração do serviço
 
-### Build Command
-```bash
-npm install && npm run build
-```
+O projeto usa Next.js e PostgreSQL.
 
-### Start Command
-```bash
-npm start
-```
+- **Build Command:** `npm install --legacy-peer-deps && npm run build`
+- **Start Command:** `npm start`
+- **Health Check Path:** `/api/health`
+- **Runtime:** Node.js
+- **Plano:** Free
 
-**NÃO use `npm run dev`** - isso roda o Vite que só funciona em desenvolvimento!
+O comando de inicialização lê automaticamente a variável `PORT` fornecida pelo Render. Localmente, usa a porta 3000.
 
-### Environment Variables
-Adicione estas variáveis de ambiente no Render:
+## Variáveis de ambiente
 
-```
-DB_USER=postgres
-DB_PASSWORD=celio48
-DB_HOST=<seu-host-postgres>
-DB_PORT=5432
-DB_NAME=oceanos
-PORT=3000
+Configure no painel do Render, em Environment:
+
+```env
 NODE_ENV=production
+DATABASE_URL=<URL_DE_CONEXAO_POSTGRESQL>
 ```
 
-## Banco de Dados PostgreSQL no Render
+Não coloque senhas, tokens ou URLs com credenciais no GitHub. O arquivo `.env` é local e está ignorado pelo Git; use um arquivo `.env.example` apenas com nomes e valores fictícios.
 
-1. Crie um serviço PostgreSQL no Render
-2. Copie as credenciais do banco
-3. Adicione como variáveis de ambiente
+## Banco de dados
 
-## Estrutura do Deploy
+Use PostgreSQL. A aplicação lê a conexão pela variável `DATABASE_URL`.
 
-O Render vai:
-1. Instalar dependências (`npm install`)
-2. Build do frontend (`npm run build`)
-3. Iniciar o servidor Node (`npm start`)
+## Verificação
 
-O servidor Express serve:
-- API em `/api/*`
-- WebSocket em `/*`
-- Frontend estático em `/*` (arquivos do `dist/`)
+Depois do deploy, acesse:
 
-## URLs
+`https://SEU-SERVICO.onrender.com/api/health`
 
-- **Frontend:** `https://seu-app.onrender.com`
-- **API:** `https://seu-app.onrender.com/api/*`
-- **WebSocket:** `wss://seu-app.onrender.com`
+A resposta esperada é JSON com `success: true` e `data.message: "ok"`.
 
-## Notas
+## Observações
 
-- O Render faz deploy automático ao push no GitHub
-- Free tier dorme após 15 minutos de inatividade
-- Primeiro acesso pode demorar 30-60 segundos
+- O Render pode suspender serviços gratuitos após período sem uso.
+- O primeiro acesso após suspensão pode demorar.
+- O deploy automático depende de o serviço Render estar conectado ao repositório e à branch `main`.
